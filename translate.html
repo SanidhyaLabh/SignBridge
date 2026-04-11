@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignBridge | Translate Mode</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        /* ── MENU OVERLAY (shared across all pages) ── */
+        .hamburger {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            width: 42px; height: 42px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 5px; cursor: pointer;
+            transition: border-color 0.25s;
+            backdrop-filter: blur(12px); padding: 0;
+        }
+        .hamburger:hover { border-color: rgba(255,255,255,0.18); }
+        .hamburger span {
+            display: block; width: 16px; height: 1.5px;
+            background: #8eadb2; border-radius: 2px;
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s, background 0.25s;
+            transform-origin: center;
+        }
+        .hamburger:hover span { background: #fff; }
+        .menu-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(ellipse at 30% 50%, #0d4650 0%, #021215 75%);
+            display: flex; flex-direction: column;
+            padding: 2.8rem 4rem;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .menu-overlay.open { opacity: 1; pointer-events: all; }
+        .menu-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5vh; }
+        .menu-logo { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: #fff; opacity: 0.9; text-decoration: none; }
+        .menu-close { background: none; border: none; color: rgba(255,255,255,0.45); font-size: 1.6rem; cursor: pointer; line-height: 1; padding: 4px 8px; transition: color 0.2s; font-weight: 300; }
+        .menu-close:hover { color: #fff; }
+        .menu-nav { display: flex; flex-direction: column; flex: 1; justify-content: center; gap: 0; }
+        .menu-item {
+            display: flex; align-items: center; gap: 1.6rem;
+            padding: 1.3rem 0;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            text-decoration: none; color: rgba(255,255,255,0.85);
+            transform: translateY(22px); opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s cubic-bezier(0.4,0,0.2,1), color 0.2s;
+        }
+        .menu-item:last-child { border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .menu-overlay.open .menu-item { transform: translateY(0); opacity: 1; }
+        .menu-overlay.open .menu-item:nth-child(1) { transition-delay: 0.05s; }
+        .menu-overlay.open .menu-item:nth-child(2) { transition-delay: 0.10s; }
+        .menu-overlay.open .menu-item:nth-child(3) { transition-delay: 0.15s; }
+        .menu-overlay.open .menu-item:nth-child(4) { transition-delay: 0.20s; }
+        .menu-overlay.open .menu-item:nth-child(5) { transition-delay: 0.25s; }
+        .menu-overlay.open .menu-item:nth-child(6) { transition-delay: 0.30s; }
+        .menu-item:hover { color: #fff; }
+        .menu-item-num { font-family: 'Inter', sans-serif; font-size: 0.6rem; font-weight: 600; color: #ffd885; letter-spacing: 1px; min-width: 20px; opacity: 0.7; }
+        .menu-item-label { font-family: 'Great Vibes', cursive; font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 400; line-height: 1; }
+        .menu-item-arrow { margin-left: auto; font-size: 1.4rem; color: #ffd885; opacity: 0; transform: translateX(-10px); transition: opacity 0.2s, transform 0.2s; }
+        .menu-item:hover .menu-item-arrow { opacity: 1; transform: translateX(0); }
+    </style>
+
+    <style>
+        /* === BASE & VARIABLES (RETAINED FROM NEW UI) === */
+        :root {
+            --bg-center: #0d4650;
+            --bg-edge: #021215;
+            --text-main: #ffffff;
+            --text-muted: #8b9eb0;
+            --dash-primary: #3b82f6;
+            --dash-success: #10b981;
+            --dash-error: #ef4444;
+            --dash-card-bg: rgba(13, 17, 23, 0.65);
+            --dash-card-border: rgba(255, 255, 255, 0.08);
+            --dash-panel-bg: rgba(5, 8, 12, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-edge) 0%, var(--bg-center) 50%, var(--bg-edge) 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease-in-out infinite;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* Overlay Effects */
+        .texture-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.08;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star-field {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.9) 0.8px, transparent 0.9px), radial-gradient(circle at 70% 15%, rgba(255, 255, 255, 0.95) 0.9px, transparent 1px);
+            background-size: 120px 120px;
+            opacity: 0.4;
+        }
+
+        /* --- FLOATING IMAGES STYLING --- */
+        .bg-sign {
+            position: fixed;
+            object-fit: contain;
+            filter: grayscale(100%) sepia(30%) hue-rotate(140deg) brightness(0.7) contrast(1.1);
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 1;
+            animation: float-base 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes float-base {
+            0% {
+                transform: translateY(0) rotate(var(--rot));
+            }
+
+            100% {
+                transform: translateY(-30px) rotate(calc(var(--rot) + 5deg));
+            }
+        }
+
+        .sign-0 {
+            --rot: 15deg;
+            left: 2%;
+            top: 15%;
+            width: 14vw;
+            max-width: 180px;
+        }
+
+        .sign-1 {
+            --rot: -15deg;
+            right: 2%;
+            top: 10%;
+            width: 12vw;
+            max-width: 160px;
+        }
+
+        .sign-2 {
+            --rot: -10deg;
+            left: 3%;
+            bottom: 8%;
+            width: 15vw;
+            max-width: 200px;
+        }
+
+        .sign-3 {
+            --rot: 20deg;
+            right: 4%;
+            bottom: 12%;
+            width: 13vw;
+            max-width: 170px;
+        }
+
+        .sign-4 {
+            --rot: 0deg;
+            left: 50%;
+            top: 5%;
+            width: 8vw;
+            max-width: 100px;
+            transform: translateX(-50%);
+            opacity: 0.1;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: relative;
+            width: 100%;
+            padding: 1.5rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+        }
+
+        .nav-logo {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.8rem;
+            color: #fff;
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.1);
+        }
+
+        /* --- DASHBOARD LAYOUT --- */
+        .dashboard-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 24px;
+        }
+
+        .dashboard-title {
+            grid-column: 1 / -1;
+            font-size: 2.2rem;
+            font-family: 'Sora';
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* --- CAMERA VIEW --- */
+        .camera-view-box {
+            background: var(--dash-panel-bg);
+            border-radius: 24px;
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--dash-card-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        /* ROI Box from old UI integrated into new UI */
+        .roi-box {
+            position: absolute;
+            top: 15%;
+            left: 45%;
+            width: 50%;
+            height: 65%;
+            border: 2px dashed var(--dash-success);
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.05);
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+
+        .camera-controls {
+            display: flex;
+            gap: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 24px;
+            border-radius: 40px;
+            position: absolute;
+            bottom: 20px;
+            z-index: 10;
+        }
+
+        /* --- SIDE PANELS --- */
+        .side-panels {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .dash-card {
+            background: var(--dash-card-bg);
+            border: 1px solid var(--dash-card-border);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(16px);
+        }
+
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--dash-primary);
+            margin-bottom: 15px;
+        }
+
+        #output-text {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: var(--text-main);
+            min-height: 80px;
+            display: block;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #confidence-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--dash-success);
+            transition: width 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--dash-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="texture-overlay"></div>
+    <div class="star-field"></div>
+
+    <img src="image_0.png" alt="Sign" class="bg-sign sign-0 parallax" data-speed="0.01">
+    <img src="image_1.png" alt="Sign" class="bg-sign sign-1 parallax" data-speed="0.012">
+    <img src="image_2.png" alt="Sign" class="bg-sign sign-2 parallax" data-speed="0.008">
+    <img src="image_3.png" alt="Sign" class="bg-sign sign-3 parallax" data-speed="0.015">
+    <img src="image_4.png" alt="Sign" class="bg-sign sign-4 parallax" data-speed="0.005">
+
+    <!-- MENU OVERLAY -->
+    <div class="menu-overlay" id="menu-overlay">
+        <div class="menu-topbar">
+            <a href="index.html" class="menu-logo">SignBridge</a>
+            <button class="menu-close" id="menu-close">&times;</button>
+        </div>
+        <nav class="menu-nav">
+            <a href="index.html" class="menu-item"><span class="menu-item-num">01</span><span class="menu-item-label">Home</span><span class="menu-item-arrow">→</span></a>
+            <a href="translate.html" class="menu-item"><span class="menu-item-num">02</span><span class="menu-item-label">Sign to Text</span><span class="menu-item-arrow">→</span></a>
+            <a href="conversation.html" class="menu-item"><span class="menu-item-num">03</span><span class="menu-item-label">Conversation Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="ar.html" class="menu-item"><span class="menu-item-num">04</span><span class="menu-item-label">Glasses Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="avatar.html" class="menu-item"><span class="menu-item-num">05</span><span class="menu-item-label">3D Avatar</span><span class="menu-item-arrow">→</span></a>
+            <a href="settings.html" class="menu-item"><span class="menu-item-num">06</span><span class="menu-item-label">Settings</span><span class="menu-item-arrow">→</span></a>
+        </nav>
+    </div>
+
+    <nav style="position:relative;width:100%;padding:1.5rem 3rem;display:flex;justify-content:space-between;align-items:center;z-index:20;">
+        <div class="nav-logo" style="font-family:'Great Vibes',cursive;font-size:2.8rem;color:#fff;">SignBridge</div>
+        <button class="hamburger" id="menu-toggle" aria-label="Open menu"><span></span><span></span><span></span></button>
+    </nav>
+
+    <main class="dashboard-container">
+        <h2 class="dashboard-title">SIGN TO TEXT</h2>
+
+        <div class="camera-view-box">
+            <div id="placeholder" style="text-align: center;">
+                <span class="material-icons-round"
+                    style="font-size: 4rem; color: rgba(255,255,255,0.2);">videocam_off</span>
+                <p style="color: var(--text-muted); margin: 15px 0;">Camera is currently offline</p>
+                <button id="start-btn" class="btn-primary">
+                    <span class="material-icons-round">videocam</span> Start AI Engine
+                </button>
+            </div>
+
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="hidden-canvas" style="display:none;"></canvas>
+            <div id="roi-visual" class="roi-box"></div>
+
+            <div class="camera-controls" id="active-controls" style="display: none;">
+                <button class="icon-btn" title="Flip"><span class="material-icons-round">flip_camera_ios</span></button>
+                <button id="stop-btn" class="icon-btn" style="color: var(--dash-error);"><span
+                        class="material-icons-round">stop_circle</span></button>
+            </div>
+        </div>
+
+        <div class="side-panels">
+            <div class="dash-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="panel-title"><span class="material-icons-round">translate</span> Live Translation</div>
+                    <span id="server-status" class="status-badge"
+                        style="background: rgba(239, 68, 68, 0.1); color: var(--dash-error);">Offline</span>
+                </div>
+
+                <span id="output-text">Waiting for gestures...</span>
+
+                <div
+                    style="display: flex; gap: 10px; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                    <button id="speak-btn" class="btn-secondary" style="flex: 1;"><span
+                            class="material-icons-round">volume_up</span> Read Aloud</button>
+                    <button id="clear-btn" class="icon-btn"><span
+                            class="material-icons-round">delete_outline</span></button>
+                </div>
+            </div>
+
+            <div class="dash-card">
+                <div class="panel-title" style="color: white;"><span class="material-icons-round">analytics</span> AI
+                    Analytics</div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Model Confidence</span>
+                    <span id="confidence-text" style="color: var(--dash-success); font-weight: 700;">0%</span>
+                </div>
+                <div class="progress-track">
+                    <div id="confidence-bar"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Detected Emotion</span>
+                    <span id="emotion-text"
+                        style="text-transform: capitalize; font-weight: 600; color: #a855f7;">-</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // PARALLAX AND INTERACTIVE LIGHTING
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.pageX);
+            const y = (window.innerHeight / 2 - e.pageY);
+
+            document.querySelectorAll('.parallax').forEach(el => {
+                const speed = el.getAttribute('data-speed');
+                el.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+            });
+
+            document.querySelectorAll('.bg-sign').forEach(sign => {
+                const rect = sign.getBoundingClientRect();
+                const signX = rect.left + rect.width / 2;
+                const signY = rect.top + rect.height / 2;
+                const dist = Math.sqrt(Math.pow(e.clientX - signX, 2) + Math.pow(e.clientY - signY, 2));
+
+                sign.style.opacity = dist < 200 ? '0.6' : '0.25';
+                sign.style.filter = dist < 200 ?
+                    'grayscale(100%) sepia(30%) hue-rotate(140deg) brightness(1.1) contrast(1.1) drop-shadow(0 0 20px rgba(0, 210, 255, 0.8))' :
+                    'grayscale(100%) sepia(30%) hue-rotate(140deg) brightness(0.9) contrast(1.1) drop-shadow(0 0 10px rgba(0, 210, 255, 0.3))';
+            });
+        });
+
+        const video = document.getElementById('webcam');
+        const canvas = document.getElementById('hidden-canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const outputText = document.getElementById('output-text');
+        const statusBadge = document.getElementById('server-status');
+        const confBar = document.getElementById('confidence-bar');
+        const confText = document.getElementById('confidence-text');
+        const emotionText = document.getElementById('emotion-text');
+        const roiVisual = document.getElementById('roi-visual');
+
+        let socket;
+        let interval;
+
+        // Connect Logic
+        function initSocket() {
+            socket = io('https://signbridge-nk7n.onrender.com');
+            socket.on('connect', () => {
+                statusBadge.textContent = "Online";
+                statusBadge.style.color = "var(--dash-success)";
+                statusBadge.style.background = "rgba(16, 185, 129, 0.1)";
+            });
+
+            socket.on('predictions', (data) => {
+                // Only display if it's a real recognized sign (not internal states)
+                const skipWords = ['No hand detected', 'HandLandmarker not loaded', 'Error', '...'];
+                if (data.word && !skipWords.includes(data.word)) {
+                    outputText.innerText = data.word;
+                } else if (data.word === 'No hand detected') {
+                    outputText.innerText = 'Show your hand to the camera...';
+                }
+                if (data.confidence !== undefined) {
+                    confText.innerText = Math.round(data.confidence) + "%";
+                    confBar.style.width = Math.min(100, data.confidence) + "%";
+                }
+                emotionText.innerText = data.emotion || "neutral";
+            });
+
+            // Correct event for hand detection status
+            socket.on('hand_status', (data) => {
+                roiVisual.style.display = data.detected ? 'block' : 'none';
+                if (!data.detected) {
+                    outputText.innerText = 'Show your hand to the camera...';
+                    confText.innerText = '0%';
+                    confBar.style.width = '0%';
+                }
+            });
+        }
+
+        startBtn.onclick = async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+            document.getElementById('active-controls').style.display = 'flex';
+
+            initSocket();
+
+            interval = setInterval(() => {
+                // Guard: only send frame if video has actual data
+                if (video.readyState !== video.HAVE_ENOUGH_DATA || !video.videoWidth) return;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                const data = canvas.toDataURL('image/jpeg', 0.6);
+                if (socket && socket.connected) socket.emit('video_frame', { image: data });
+            }, 100);
+        };
+
+        stopBtn.onclick = () => {
+            clearInterval(interval);
+            video.srcObject.getTracks().forEach(t => t.stop());
+            location.reload(); // Quick reset
+        };
+
+        // Text to Speech
+        document.getElementById('speak-btn').onclick = () => {
+            const msg = new SpeechSynthesisUtterance(outputText.innerText);
+            window.speechSynthesis.speak(msg);
+        };
+        // ── MENU OVERLAY
+        const menuToggle  = document.getElementById('menu-toggle');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuClose   = document.getElementById('menu-close');
+        function openSidebar()  { menuOverlay.classList.add('open');    document.body.style.overflow = 'hidden'; }
+        function closeSidebar() { menuOverlay.classList.remove('open'); document.body.style.overflow = ''; }
+        menuToggle.addEventListener('click', () => menuOverlay.classList.contains('open') ? closeSidebar() : openSidebar());
+        menuClose.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidebar(); });
+    </script>
+</body>
+
+</html>

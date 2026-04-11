@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Avatar - SignBridge</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Import map: Three.js 0.128 (same version as the ISL engine) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+      }
+    }
+    </script>
+
+    <style>
+        /* === BASE & VARIABLES === */
+        :root {
+            --bg-center: #0d4650;
+            --bg-edge: #021215;
+            --text-main: #ffffff;
+            --text-muted: #8b9eb0;
+
+            --dash-primary: #3b82f6;
+            --dash-primary-hover: #2563eb;
+            --dash-success: #10b981;
+            --dash-accent: #f97316;
+            --tag-text: #818cf8;
+
+            --dash-card-bg: rgba(13, 17, 23, 0.65);
+            --dash-card-border: rgba(255, 255, 255, 0.08);
+            --dash-panel-bg: rgba(5, 8, 12, 0.7);
+            --dash-element-bg: rgba(255, 255, 255, 0.05);
+            --dash-element-hover: rgba(255, 255, 255, 0.1);
+
+            /* Compat aliases for app.js / styles.css */
+            --clr-primary: #3b82f6;
+            --clr-text: #ffffff;
+            --clr-text-muted: #8b9eb0;
+            --clr-warning: #f97316;
+            --clr-glass-border: rgba(255, 255, 255, 0.08);
+            --border-radius: 16px;
+            --nav-height: 72px;
+            --font-body: 'Inter', sans-serif;
+            --font-heading: 'Sora', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* === BACKGROUND & ENVIRONMENT === */
+        body {
+            background: linear-gradient(135deg, var(--bg-edge) 0%, var(--bg-center) 50%, var(--bg-edge) 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease-in-out infinite;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .texture-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.08;
+            mix-blend-mode: overlay;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .star-field {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.9) 0.8px, transparent 0.9px),
+                radial-gradient(circle at 25% 70%, rgba(255, 255, 255, 0.85) 0.7px, transparent 0.8px),
+                radial-gradient(circle at 40% 35%, rgba(255, 255, 255, 0.9) 0.65px, transparent 0.75px),
+                radial-gradient(circle at 70% 15%, rgba(255, 255, 255, 0.95) 0.9px, transparent 1px),
+                radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.8) 0.7px, transparent 0.8px);
+            background-size: 120px 120px, 140px 140px, 100px 100px, 160px 160px, 90px 90px;
+            animation: starsTwinkle 8s ease-in-out infinite;
+            opacity: 0.4;
+        }
+
+        @keyframes starsTwinkle {
+
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 0.2;
+            }
+        }
+
+        /* === FLOATING ANIMATED HANDS === */
+        .real-hand-img {
+            position: fixed;
+            object-fit: contain;
+            filter: grayscale(100%) sepia(40%) hue-rotate(120deg) brightness(0.7) contrast(1.1);
+            transition: opacity 0.5s ease;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        @keyframes float-hand {
+            0% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(-15px);
+            }
+        }
+
+        .h-1 {
+            left: -5%;
+            top: 30%;
+            width: 22vw;
+            max-width: 250px;
+            opacity: 0.3;
+            animation: float-hand 8s ease-in-out infinite alternate;
+        }
+
+        .h-2 {
+            right: -5%;
+            bottom: 10%;
+            width: 24vw;
+            max-width: 280px;
+            opacity: 0.3;
+            animation: float-hand 9s ease-in-out infinite alternate;
+        }
+
+        .h-3 {
+            left: 0%;
+            top: 0%;
+            width: 140px;
+            opacity: 0.15;
+            animation: float-hand 7s ease-in-out infinite alternate;
+        }
+
+        .h-4 {
+            right: 5%;
+            top: 15%;
+            width: 190px;
+            opacity: 0.15;
+            animation: float-hand 8s ease-in-out infinite alternate;
+        }
+
+        /* === LOAD ANIMATION === */
+        @keyframes slideUpIn {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-load {
+            opacity: 0;
+            animation: slideUpIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        /* === MENU OVERLAY (from file 2, kept fully intact) === */
+        .hamburger {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: border-color 0.25s;
+            backdrop-filter: blur(12px);
+            padding: 0;
+        }
+
+        .hamburger:hover {
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .hamburger span {
+            display: block;
+            width: 16px;
+            height: 1.5px;
+            background: #8eadb2;
+            border-radius: 2px;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s, background 0.25s;
+            transform-origin: center;
+        }
+
+        .hamburger:hover span {
+            background: #fff;
+        }
+
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: radial-gradient(ellipse at 30% 50%, #0d4650 0%, #021215 75%);
+            display: flex;
+            flex-direction: column;
+            padding: 2.8rem 4rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .menu-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .menu-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5vh;
+        }
+
+        .menu-logo {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.2rem;
+            color: #fff;
+            opacity: 0.9;
+            text-decoration: none;
+        }
+
+        .menu-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 1.6rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            transition: color 0.2s;
+            font-weight: 300;
+        }
+
+        .menu-close:hover {
+            color: #fff;
+        }
+
+        .menu-nav {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 1.6rem;
+            padding: 1.3rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            transform: translateY(22px);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+        }
+
+        .menu-item:last-child {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .menu-overlay.open .menu-item {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(1) {
+            transition-delay: 0.05s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(2) {
+            transition-delay: 0.10s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(3) {
+            transition-delay: 0.15s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(4) {
+            transition-delay: 0.20s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(5) {
+            transition-delay: 0.25s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(6) {
+            transition-delay: 0.30s;
+        }
+
+        .menu-item:hover {
+            color: #fff;
+        }
+
+        .menu-item-num {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #ffd885;
+            letter-spacing: 1px;
+            min-width: 20px;
+            opacity: 0.7;
+        }
+
+        .menu-item-label {
+            font-family: 'Great Vibes', cursive;
+            font-size: clamp(2.4rem, 5vw, 4rem);
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .menu-item-arrow {
+            margin-left: auto;
+            font-size: 1.4rem;
+            color: #ffd885;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .menu-item:hover .menu-item-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* === NAVIGATION === */
+        nav.main-nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1.2rem 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 200;
+            background: rgba(2, 18, 21, 0.6);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-logo {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2rem;
+            color: #fff;
+            text-decoration: none;
+            opacity: 0.9;
+        }
+
+        /* === PAGE LAYOUT === */
+        .page-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 2rem auto;
+            padding: calc(var(--nav-height) + 24px) 30px 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .page-title {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 2.2rem;
+            letter-spacing: -0.5px;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        /* === SHARED CARD BASE === */
+        .dash-card {
+            background: var(--dash-card-bg);
+            border: 1px solid var(--dash-card-border);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+
+        /* === INPUT CARD === */
+        .input-card {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--dash-panel-bg);
+            border: 1px solid var(--dash-card-border);
+            color: var(--text-main);
+            padding: 14px 24px;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-input:focus {
+            border-color: var(--dash-primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn-animate {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--dash-primary);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-animate:hover {
+            background: var(--dash-primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-animate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-mic {
+            background: var(--dash-panel-bg);
+            border: 1px solid var(--dash-card-border);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-mic:hover {
+            background: var(--dash-element-hover);
+        }
+
+        .btn-mic .material-icons-round {
+            font-size: 20px;
+        }
+
+        /* === ANIMATION CONTROLS BAR === */
+        .animation-controls-bar {
+            padding: 14px 20px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-secondary {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--dash-element-bg);
+            border: 1px solid var(--dash-card-border);
+            color: var(--text-main);
+            padding: 9px 18px;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--dash-element-hover);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-secondary .material-icons-round {
+            font-size: 16px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--dash-panel-bg);
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--dash-card-border);
+            margin-left: auto;
+        }
+
+        .speed-control label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .speed-slider {
+            width: 90px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--dash-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .speed-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: var(--dash-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        #speed-value {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            min-width: 28px;
+        }
+
+        /* === ISL WORD BOX === */
+        .isl-box-card {
+            padding: 14px 20px;
+            min-height: 52px;
+        }
+
+        #isl-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 28px;
+        }
+
+        .isl-word {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid var(--dash-primary);
+            font-family: 'Sora', sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        /* === 3D VIEWER CARD === */
+        .viewer-card {
+            min-height: 460px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.95));
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Three.js canvas injected here fills the card */
+        .viewer-card canvas {
+            position: absolute !important;
+            inset: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 16px;
+        }
+
+        .render-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .render-placeholder .material-icons-round {
+            font-size: 72px;
+            color: var(--dash-accent);
+            opacity: 0.5;
+            margin-bottom: 16px;
+            display: block;
+            animation: floatIcon 4s ease-in-out infinite;
+        }
+
+        @keyframes floatIcon {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-18px);
+            }
+        }
+
+        .render-placeholder .viewer-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .render-placeholder .viewer-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .tags-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .tech-tag {
+            background: var(--dash-panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--tag-text);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 768px) {
+            .page-container {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .input-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-actions {
+                display: flex;
+                gap: 12px;
+            }
+
+            .btn-animate {
+                flex: 1;
+                justify-content: center;
+            }
+
+            .animation-controls-bar {
+                justify-content: center;
+            }
+
+            .speed-control {
+                margin-left: 0;
+            }
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background layers -->
+    <div class="texture-overlay"></div>
+    <div class="star-field"></div>
+
+    <!-- Floating hand SVGs (paths kept relative as in original file 1) -->
+    <img src="images/sign6.svg" alt="" class="real-hand-img h-1 parallax" data-speed="0.03">
+    <img src="images/sign5.svg" alt="" class="real-hand-img h-2 parallax" data-speed="0.04">
+    <img src="images/sign4.svg" alt="" class="real-hand-img h-3 parallax" data-speed="0.03">
+    <img src="images/sign3.svg" alt="" class="real-hand-img h-4 parallax" data-speed="0.035">
+
+    <!-- MENU OVERLAY (file 2 — fully intact) -->
+    <div class="menu-overlay" id="menu-overlay">
+        <div class="menu-topbar">
+            <a href="index.html" class="menu-logo">SignBridge</a>
+            <button class="menu-close" id="menu-close">&times;</button>
+        </div>
+        <nav class="menu-nav">
+            <a href="index.html" class="menu-item"><span class="menu-item-num">01</span><span
+                    class="menu-item-label">Home</span><span class="menu-item-arrow">→</span></a>
+            <a href="translate.html" class="menu-item"><span class="menu-item-num">02</span><span
+                    class="menu-item-label">Sign to Text</span><span class="menu-item-arrow">→</span></a>
+            <a href="conversation.html" class="menu-item"><span class="menu-item-num">03</span><span
+                    class="menu-item-label">Conversation Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="ar.html" class="menu-item"><span class="menu-item-num">04</span><span
+                    class="menu-item-label">Glasses Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="avatar.html" class="menu-item"><span class="menu-item-num">05</span><span
+                    class="menu-item-label">3D Avatar</span><span class="menu-item-arrow">→</span></a>
+            <a href="settings.html" class="menu-item"><span class="menu-item-num">06</span><span
+                    class="menu-item-label">Settings</span><span class="menu-item-arrow">→</span></a>
+        </nav>
+    </div>
+
+    <!-- TOP NAV -->
+    <nav class="main-nav animate-load" style="animation-delay: 0s;">
+        <a href="index.html" class="nav-logo">SignBridge</a>
+        <button class="hamburger" id="menu-toggle" aria-label="Open menu">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="page-container animate-load" style="animation-delay: 0.2s;">
+
+        <h2 class="page-title">3D AVATAR</h2>
+
+        <!-- Input row -->
+        <div class="dash-card input-card">
+            <div class="search-input-wrapper">
+                <input type="text" id="avatar-input" class="search-input"
+                    placeholder="Type a sentence for the avatar to sign...">
+            </div>
+            <div class="input-actions" style="display:flex; gap:12px;">
+                <button id="animate-btn" class="btn-animate">
+                    <span class="material-icons-round" style="font-size:18px;">play_arrow</span>
+                    Animate
+                </button>
+                <button id="mic-btn" class="btn-mic">
+                    <span class="material-icons-round">mic</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Animation controls -->
+        <div class="dash-card animation-controls-bar">
+            <button id="reset-btn" class="btn-secondary">
+                <span class="material-icons-round">refresh</span> Reset
+            </button>
+            <button id="pause-btn" class="btn-secondary">
+                <span class="material-icons-round">pause</span> Pause
+            </button>
+            <div class="speed-control">
+                <label>Speed:</label>
+                <input type="range" id="speed-slider" class="speed-slider" min="0.5" max="2" step="0.1" value="1">
+                <span id="speed-value">1.0x</span>
+            </div>
+        </div>
+
+        <!-- ISL word display -->
+        <div class="dash-card isl-box-card">
+            <div id="isl-box">
+                <span style="color: var(--text-muted); font-style: italic; font-size:0.9rem;">
+                    Processed ISL Grammar will appear here...
+                </span>
+            </div>
+        </div>
+
+        <!-- Three.js render surface -->
+        <div class="dash-card viewer-card" id="three-canvas">
+            <div class="render-placeholder" id="render-msg">
+                <span class="material-icons-round">accessibility_new</span>
+                <p class="viewer-title">Virtual ISL Interpreter</p>
+                <p class="viewer-subtitle">3D Engine Ready / Waiting for Input</p>
+                <div class="tags-container">
+                    <span class="tech-tag">Three.js</span>
+                    <span class="tech-tag">FBX Models</span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- === FUNCTIONAL SCRIPTS (file 2 — fully intact) === -->
+    <script type="module" src="js/3d_engine/isl_avatar_controller.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Avatar viewer specific functionality
+        const avatarInput = document.getElementById('avatar-input');
+        const animateBtn = document.getElementById('animate-btn');
+        const micBtn = document.getElementById('mic-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const islBox = document.getElementById('isl-box');
+
+        let isPaused = false;
+        let currentSpeed = 1.0;
+        let signedText = '';
+
+        // Listen to bone-engine text events
+        document.addEventListener('islTextUpdate', (e) => {
+            signedText += e.detail;
+            const wordSpans = signedText.trim().split(/\s+/)
+                .map(w => `<span class="isl-word">${w}</span>`).join('');
+            islBox.innerHTML = wordSpans;
+        });
+        document.addEventListener('islTextClear', () => { signedText = ''; });
+
+        // Process text for ISL via backend (spaCy grammar extraction)
+        async function processTextForISL(text) {
+            if (!text) return text;
+            try {
+                const response = await fetch('https://signbridge-nk7n.onrender.com/api/process_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.isl_structure || text.toUpperCase();
+                }
+            } catch (error) {
+                console.warn('Backend not reachable, using raw text:', error);
+            }
+            return text.toUpperCase();
+        }
+
+        function updateISLDisplay(words) {
+            if (!words || words.length === 0) {
+                islBox.innerHTML = '<span style="color:var(--text-muted);font-style:italic;">No words to sign</span>';
+                return;
+            }
+            islBox.innerHTML = words.map(w => `<span class="isl-word">${w}</span>`).join('');
+        }
+
+        if (animateBtn) {
+            animateBtn.addEventListener('click', async () => {
+                const text = avatarInput.value.trim();
+                if (!text) {
+                    signSenseAR.showNotification('Please enter text to animate', 'warning');
+                    return;
+                }
+                const islText = await processTextForISL(text);
+                updateISLDisplay(islText.split(/\s+/));
+
+                if (window.islAvatarController) {
+                    animateBtn.disabled = true;
+                    animateBtn.innerHTML = '<span class="material-icons-round" style="animation:spin 1s linear infinite">autorenew</span> Signing...';
+                    window.islAvatarController.animateText(islText);
+                    const estDuration = Math.max(3000, islText.replace(/\s/g, '').length * 350);
+                    setTimeout(() => {
+                        animateBtn.disabled = false;
+                        animateBtn.innerHTML = '<span class="material-icons-round" style="font-size:18px;">play_arrow</span> Animate';
+                    }, estDuration);
+                } else {
+                    signSenseAR.showNotification('3D Avatar engine not ready yet', 'error');
+                }
+            });
+        }
+
+        if (micBtn) {
+            micBtn.addEventListener('click', () => {
+                if (signSenseAR.browserSupport.webkitSpeech) {
+                    signSenseAR.startSpeechRecognition();
+                } else {
+                    signSenseAR.showNotification('Speech recognition not supported in your browser', 'error');
+                }
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (window.islAvatarController) window.islAvatarController.reset();
+                avatarInput.value = '';
+                signedText = '';
+                updateISLDisplay([]);
+            });
+        }
+
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', () => {
+                isPaused = !isPaused;
+                if (window.islAvatarController) {
+                    if (isPaused) {
+                        window.islAvatarController.pause();
+                        pauseBtn.innerHTML = '<span class="material-icons-round">play_arrow</span> Resume';
+                    } else {
+                        window.islAvatarController.resume();
+                        pauseBtn.innerHTML = '<span class="material-icons-round">pause</span> Pause';
+                    }
+                }
+            });
+        }
+
+        if (speedSlider) {
+            speedSlider.addEventListener('input', (e) => {
+                currentSpeed = parseFloat(e.target.value);
+                speedValue.textContent = currentSpeed.toFixed(1) + 'x';
+                if (window.islAvatarController) window.islAvatarController.setSpeed(currentSpeed);
+            });
+        }
+
+        if (avatarInput) {
+            avatarInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') animateBtn.click();
+            });
+        }
+
+        // Override speech result handler
+        const originalHandleSpeechResult = signSenseAR.handleSpeechResult;
+        signSenseAR.handleSpeechResult = async function (transcript) {
+            originalHandleSpeechResult.call(this, transcript);
+            if (avatarInput) avatarInput.value = transcript;
+            setTimeout(() => animateBtn.click(), 500);
+        };
+
+        // Welcome sign on avatar load
+        document.addEventListener('islAvatarLoaded', async () => {
+            const welcomeText = await processTextForISL('HELLO');
+            updateISLDisplay(welcomeText.split(/\s+/));
+            if (window.islAvatarController) window.islAvatarController.animateText(welcomeText);
+        }, { once: true });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 'Enter': e.preventDefault(); animateBtn.click(); break;
+                    case 'm': e.preventDefault(); micBtn.click(); break;
+                    case 'r': e.preventDefault(); resetBtn.click(); break;
+                    case ' ': e.preventDefault(); pauseBtn.click(); break;
+                }
+            }
+        });
+
+        // === MENU OVERLAY (file 2 — fully intact) ===
+        const menuToggle = document.getElementById('menu-toggle');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuClose = document.getElementById('menu-close');
+        function openSidebar() { menuOverlay.classList.add('open'); document.body.style.overflow = 'hidden'; }
+        function closeSidebar() { menuOverlay.classList.remove('open'); document.body.style.overflow = ''; }
+        menuToggle.addEventListener('click', () => menuOverlay.classList.contains('open') ? closeSidebar() : openSidebar());
+        menuClose.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSidebar(); });
+
+        // === PARALLAX (file 1) ===
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.pageX);
+            const y = (window.innerHeight / 2 - e.pageY);
+            document.querySelectorAll('.parallax').forEach(el => {
+                const speed = el.getAttribute('data-speed');
+                if (speed) el.style.transform = `translate(${x * speed}px, ${y * speed}px)`;
+            });
+        });
+
+        // === HAND PROXIMITY LIGHTING (file 1) ===
+        const gestures = document.querySelectorAll('.real-hand-img');
+        document.addEventListener('mousemove', (e) => {
+            gestures.forEach(g => {
+                const rect = g.getBoundingClientRect();
+                const gx = rect.left + rect.width / 2;
+                const gy = rect.top + rect.height / 2;
+                const dist = Math.sqrt(Math.pow(e.pageX - gx, 2) + Math.pow(e.pageY - gy, 2));
+                const base = (g.classList.contains('h-3') || g.classList.contains('h-4')) ? '0.25' : '0.4';
+                g.style.opacity = dist < 200 ? '0.8' : base;
+            });
+        });
+    </script>
+</body>
+
+</html>

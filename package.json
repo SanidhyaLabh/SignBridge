@@ -1,0 +1,52 @@
+{
+  "name": "signsense-ar",
+  "version": "1.0.0",
+  "description": "SignSense AR - A Real-Time AI-Powered Sign Language Communication System with AR Simulation",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve . -l 8000",
+    "dev": "npx serve . -l 8000 -o",
+    "build": "echo 'No build process needed for static site'",
+    "backend": "cd backend && python app.py",
+    "setup": "python setup.py",
+    "install-deps": "cd backend && pip install -r requirements.txt",
+    "full-setup": "python setup.py && npm run start"
+  },
+  "keywords": [
+    "sign-language",
+    "ar",
+    "ai",
+    "translation",
+    "3d-avatar",
+    "mediaPipe",
+    "three.js",
+    "flask",
+    "real-time",
+    "communication",
+    "accessibility",
+    "isl",
+    "indian-sign-language"
+  ],
+  "author": "SignSense AR Team",
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^14.2.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/signsense-ar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/signsense-ar/issues"
+  },
+  "homepage": "https://github.com/your-username/signsense-ar#readme",
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

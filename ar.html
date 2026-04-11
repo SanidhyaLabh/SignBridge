@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Glass Mode | SignSense AR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════════════════
+           AR GLASS MODE — FULL IMMERSIVE UI
+           ═══════════════════════════════════════════════════════════ */
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body, html {
+            width: 100%; height: 100%;
+            background: #000;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        /* ── Camera Layer ── */
+        #cam-feed-placeholder {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, #111 0%, #000 100%);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #444; z-index: 1;
+        }
+        #cam-feed-placeholder .material-icons-round { font-size: 80px; margin-bottom: 12px; }
+
+        #ar-video {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; z-index: 1;
+            display: none;
+        }
+
+        #ip-webcam-img {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; z-index: 1;
+            display: none;
+        }
+
+        /* ── Canvas Overlay for Hand Skeleton ── */
+        #skeleton-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 15; pointer-events: none;
+        }
+
+        /* ── AR Visual Tint ── */
+        .ar-overlay {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg,
+                rgba(16, 185, 129, 0.04),
+                rgba(59, 130, 246, 0.04));
+            pointer-events: none; z-index: 16;
+        }
+
+        /* ── Scanlines Effect ── */
+        .scanlines {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 128, 0.015) 2px,
+                rgba(0, 255, 128, 0.015) 4px
+            );
+            pointer-events: none; z-index: 17;
+            animation: scanlineMove 8s linear infinite;
+        }
+        @keyframes scanlineMove {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
+
+        /* ── Reticle ── */
+        .ar-reticle {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 220px; height: 220px;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 8%;
+            z-index: 20; pointer-events: none;
+            transition: all 0.5s;
+        }
+        .ar-reticle.hand-detected {
+            border-color: rgba(16, 185, 129, 0.7);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+        }
+
+        .corner {
+            position: absolute; width: 24px; height: 24px;
+            border-color: rgba(16, 185, 129, 0.7); border-style: solid;
+            transition: border-color 0.3s;
+        }
+        .ar-reticle.hand-detected .corner { border-color: #10B981; }
+
+        .tl { top: -1px; left: -1px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+        .tr { top: -1px; right: -1px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+        .bl { bottom: -1px; left: -1px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+        .br { bottom: -1px; right: -1px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+        /* ── Top HUD ── */
+        .hud-top {
+            position: absolute; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between;
+            align-items: flex-start; z-index: 30;
+        }
+
+        .close-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: white; border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px; border-radius: 50%; cursor: pointer;
+            backdrop-filter: blur(8px); display: flex;
+            transition: all 0.3s; text-decoration: none;
+        }
+        .close-btn:hover { background: rgba(239, 68, 68, 0.5); }
+
+        .status-badge {
+            background: rgba(0, 0, 0, 0.6);
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 6px 16px; border-radius: 20px;
+            font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 1px;
+            display: flex; align-items: center; gap: 8px;
+            backdrop-filter: blur(8px);
+        }
+
+        .pulse-dot {
+            width: 8px; height: 8px;
+            background: #10B981; border-radius: 50%;
+            box-shadow: 0 0 10px #10B981;
+            animation: pulse 1.5s infinite alternate;
+        }
+        .pulse-dot.disconnected { background: #EF4444; box-shadow: 0 0 10px #EF4444; }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; box-shadow: 0 0 5px #10B981; }
+            100% { opacity: 1; box-shadow: 0 0 15px #10B981; }
+        }
+
+        .hud-info-chip {
+            background: rgba(0,0,0,0.6); padding: 6px 14px;
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; gap: 6px;
+            color: white; font-size: 0.8rem;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Recognized Letter (Big Center Display) ── */
+        .letter-display {
+            position: absolute; top: 18%; left: 50%;
+            transform: translateX(-50%);
+            z-index: 30; text-align: center;
+            pointer-events: none;
+        }
+        .letter-display .letter {
+            font-family: 'Outfit', sans-serif;
+            font-size: 5rem; font-weight: 700;
+            color: #10B981;
+            text-shadow: 0 0 40px rgba(16, 185, 129, 0.5),
+                         0 0 80px rgba(16, 185, 129, 0.2);
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        .letter-display .conf {
+            font-size: 0.85rem; color: rgba(255,255,255,0.5);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 4px;
+        }
+
+        /* ── Sentence Builder (Bottom) ── */
+        .sentence-panel {
+            position: absolute; bottom: 8%; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(12px);
+            padding: 20px 36px; border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white; text-align: center;
+            z-index: 30;
+            min-width: 400px; max-width: 85%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .sentence-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem; font-weight: 500;
+            min-height: 40px; letter-spacing: 3px;
+            word-break: break-word;
+        }
+        .sentence-text .cursor-blink {
+            display: inline-block; width: 2px; height: 1.4em;
+            background: #10B981; margin-left: 4px;
+            vertical-align: middle;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+
+        .sentence-controls {
+            display: flex; justify-content: center;
+            gap: 10px; margin-top: 12px;
+        }
+        .sent-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #ccc; padding: 6px 16px;
+            border-radius: 20px; cursor: pointer;
+            font-size: 0.75rem; font-weight: 600;
+            display: flex; align-items: center; gap: 4px;
+            transition: all 0.3s;
+        }
+        .sent-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+        .sent-btn .material-icons-round { font-size: 16px; }
+
+        /* ── Confidence Meter ── */
+        .confidence-meter {
+            position: absolute; right: 20px; top: 50%;
+            transform: translateY(-50%);
+            z-index: 30;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 6px;
+        }
+        .conf-bar-track {
+            width: 6px; height: 150px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 10px; overflow: hidden;
+            position: relative;
+        }
+        .conf-bar-fill {
+            position: absolute; bottom: 0; left: 0;
+            width: 100%; background: #10B981;
+            border-radius: 10px;
+            transition: height 0.3s;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+        .conf-label {
+            font-size: 0.65rem; color: rgba(255,255,255,0.4);
+            font-family: 'JetBrains Mono', monospace;
+            writing-mode: vertical-rl;
+            letter-spacing: 1px;
+        }
+
+        /* ── AR Controls (Bottom Right) ── */
+        .ar-controls {
+            position: absolute; bottom: 20px; right: 20px;
+            display: flex; gap: 10px; z-index: 30;
+        }
+        .ar-btn {
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 12px; border-radius: 50%; cursor: pointer;
+            backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s;
+            width: 48px; height: 48px;
+        }
+        .ar-btn:hover { background: rgba(59, 130, 246, 0.5); transform: scale(1.1); }
+        .ar-btn.active { background: rgba(16, 185, 129, 0.5); border-color: #10B981; }
+
+        /* ── IP Webcam Connection Modal ── */
+        .ip-modal-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .ip-modal-overlay.hidden { display: none; }
+
+        .ip-modal {
+            background: rgba(15, 20, 30, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 40px;
+            width: 90%; max-width: 480px;
+            backdrop-filter: blur(20px);
+        }
+        .ip-modal h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.6rem; font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .ip-modal .subtitle {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem; margin-bottom: 28px;
+        }
+        .input-group {
+            display: flex; flex-direction: column; gap: 8px;
+            margin-bottom: 20px;
+        }
+        .input-group label {
+            font-size: 0.8rem; color: rgba(255,255,255,0.5);
+            font-weight: 600; letter-spacing: 0.5px;
+        }
+        .ip-input {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: white; padding: 14px 18px;
+            border-radius: 14px; font-size: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none; transition: border-color 0.3s;
+        }
+        .ip-input:focus { border-color: #10B981; }
+        .ip-input::placeholder { color: rgba(255,255,255,0.2); }
+
+        .modal-btns {
+            display: flex; gap: 12px; margin-top: 24px;
+        }
+        .modal-btn {
+            flex: 1; padding: 14px; border-radius: 14px;
+            font-weight: 600; font-size: 0.95rem;
+            cursor: pointer; transition: all 0.3s;
+            display: flex; align-items: center;
+            justify-content: center; gap: 8px;
+        }
+        .modal-btn.primary {
+            background: #10B981; color: white; border: none;
+        }
+        .modal-btn.primary:hover { background: #0ea573; }
+        .modal-btn.secondary {
+            background: rgba(255,255,255,0.06);
+            color: #ccc; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal-btn.secondary:hover { background: rgba(255,255,255,0.12); }
+        .modal-btn.local-cam {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .modal-btn.local-cam:hover { background: rgba(59, 130, 246, 0.3); }
+
+        .connection-status {
+            margin-top: 16px; padding: 10px 14px;
+            border-radius: 10px; font-size: 0.8rem;
+            display: none;
+        }
+        .connection-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171; display: block;
+        }
+        .connection-status.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #34d399; display: block;
+        }
+
+        /* ── Notification Toast ── */
+        .toast {
+            position: fixed; top: 80px; left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 24px; border-radius: 14px;
+            font-size: 0.85rem; z-index: 200;
+            opacity: 0; transition: all 0.4s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── Source label ── */
+        .source-label {
+            position: absolute; bottom: 20px; left: 20px;
+            z-index: 30;
+            background: rgba(0,0,0,0.6);
+            padding: 6px 14px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.7rem; color: rgba(255,255,255,0.4);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(8px);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .sentence-panel { min-width: auto; width: 92%; padding: 16px 20px; }
+            .sentence-text { font-size: 1.2rem; }
+            .letter-display .letter { font-size: 3.5rem; }
+            .ar-reticle { width: 160px; height: 160px; }
+            .confidence-meter { display: none; }
+            .ip-modal { padding: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ CAMERA FEED LAYERS ═══ -->
+    <div id="cam-feed-placeholder">
+        <span class="material-icons-round">linked_camera</span>
+        <p style="font-size: 0.9rem; margin-bottom: 6px;">Initializing AR Environment...</p>
+        <p style="font-size: 0.7rem; color: #333;">Connect a camera source to begin</p>
+    </div>
+
+    <video id="ar-video" autoplay playsinline></video>
+    <img id="ip-webcam-img" alt="IP Webcam Feed">
+    <canvas id="skeleton-canvas"></canvas>
+
+    <!-- AR Visual Effects -->
+    <div class="ar-overlay"></div>
+    <div class="scanlines"></div>
+
+    <!-- Reticle -->
+    <div class="ar-reticle" id="ar-reticle">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+    </div>
+
+    <!-- ═══ TOP HUD ═══ -->
+    <div class="hud-top">
+        <a href="index.html" class="close-btn" title="Exit AR Mode">
+            <span class="material-icons-round">close</span>
+        </a>
+
+        <div class="status-badge" id="status-badge">
+            <span class="pulse-dot" id="pulse-dot"></span>
+            <span id="status-text">CONNECTING</span>
+        </div>
+
+        <div class="hud-info-chip" id="model-chip">
+            <span class="material-icons-round" style="font-size: 16px;">smart_toy</span>
+            <span id="model-label">Loading...</span>
+        </div>
+    </div>
+
+    <!-- ═══ RECOGNIZED LETTER ═══ -->
+    <div class="letter-display" id="letter-display">
+        <div class="letter" id="current-letter">—</div>
+        <div class="conf" id="current-conf">0%</div>
+    </div>
+
+    <!-- ═══ CONFIDENCE METER ═══ -->
+    <div class="confidence-meter">
+        <div class="conf-bar-track">
+            <div class="conf-bar-fill" id="conf-fill" style="height: 0%;"></div>
+        </div>
+        <div class="conf-label">CONF</div>
+    </div>
+
+    <!-- ═══ SENTENCE BUILDER ═══ -->
+    <div class="sentence-panel">
+        <div class="sentence-text" id="sentence-text">
+            <span class="cursor-blink"></span>
+        </div>
+        <div class="sentence-controls">
+            <button class="sent-btn" id="btn-space" title="Add Space">
+                <span class="material-icons-round">space_bar</span> Space
+            </button>
+            <button class="sent-btn" id="btn-backspace" title="Delete Last">
+                <span class="material-icons-round">backspace</span> Delete
+            </button>
+            <button class="sent-btn" id="btn-clear" title="Clear All">
+                <span class="material-icons-round">delete_sweep</span> Clear
+            </button>
+            <button class="sent-btn" id="btn-speak" title="Read Aloud">
+                <span class="material-icons-round">volume_up</span> Speak
+            </button>
+            <button class="sent-btn" id="btn-copy" title="Copy">
+                <span class="material-icons-round">content_copy</span> Copy
+            </button>
+        </div>
+    </div>
+
+    <!-- ═══ SOURCE LABEL ═══ -->
+    <div class="source-label" id="source-label">SRC: NONE</div>
+
+    <!-- ═══ AR CONTROLS ═══ -->
+    <div class="ar-controls">
+        <button class="ar-btn" id="btn-camera-source" title="Camera Source">
+            <span class="material-icons-round">linked_camera</span>
+        </button>
+        <button class="ar-btn" id="btn-mic" title="Voice Input">
+            <span class="material-icons-round">mic</span>
+        </button>
+        <button class="ar-btn" id="btn-skeleton-toggle" title="Toggle Skeleton" >
+            <span class="material-icons-round">gesture</span>
+        </button>
+        <button class="ar-btn" id="btn-settings" title="Settings">
+            <span class="material-icons-round">tune</span>
+        </button>
+    </div>
+
+    <!-- ═══ IP WEBCAM MODAL ═══ -->
+    <div class="ip-modal-overlay" id="ip-modal">
+        <div class="ip-modal">
+            <h2>📡 Connect Camera</h2>
+            <p class="subtitle">Choose camera source for AR Glass Mode</p>
+
+            <div class="input-group">
+                <label>IP WEBCAM URL (Android App)</label>
+                <input type="text" class="ip-input" id="ip-url-input"
+                    placeholder="http://172.18.x.x:8080"
+                    value="">
+                <small style="color:rgba(255,200,50,0.7);font-size:0.72rem;margin-top:4px;">⚠ Use <b>http://</b> (not https). IP Webcam app does not support HTTPS.</small>
+            </div>
+
+            <div class="connection-status" id="connection-status"></div>
+
+            <div class="modal-btns">
+                <button class="modal-btn primary" id="btn-connect-ip">
+                    <span class="material-icons-round" style="font-size:20px;">wifi</span>
+                    Connect IP Cam
+                </button>
+                <button class="modal-btn local-cam" id="btn-use-local">
+                    <span class="material-icons-round" style="font-size:20px;">videocam</span>
+                    Local Webcam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ TOAST ═══ -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Hidden processing canvas -->
+    <canvas id="processing-canvas" style="display:none;"></canvas>
+
+    <!-- ═══ SOCKET.IO ═══ -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════
+    //  SIGNSENSE AR — FULL AR OVERLAY ENGINE
+    // ═══════════════════════════════════════════════════════════════
+
+    (() => {
+        'use strict';
+
+        // ── DOM Refs ──
+        const placeholder     = document.getElementById('cam-feed-placeholder');
+        const arVideo         = document.getElementById('ar-video');
+        const ipWebcamImg     = document.getElementById('ip-webcam-img');
+        const skeletonCanvas  = document.getElementById('skeleton-canvas');
+        const skCtx           = skeletonCanvas.getContext('2d');
+        const procCanvas      = document.getElementById('processing-canvas');
+        const procCtx         = procCanvas.getContext('2d');
+
+        const statusBadge     = document.getElementById('status-badge');
+        const statusText      = document.getElementById('status-text');
+        const pulseDot        = document.getElementById('pulse-dot');
+        const modelLabel      = document.getElementById('model-label');
+        const arReticle       = document.getElementById('ar-reticle');
+
+        const letterEl        = document.getElementById('current-letter');
+        const confEl          = document.getElementById('current-conf');
+        const confFill        = document.getElementById('conf-fill');
+        const sentenceText    = document.getElementById('sentence-text');
+        const sourceLabel     = document.getElementById('source-label');
+        const toast           = document.getElementById('toast');
+
+        const ipModal         = document.getElementById('ip-modal');
+        const ipUrlInput      = document.getElementById('ip-url-input');
+        const connStatus      = document.getElementById('connection-status');
+
+        // ── State ──
+        let socket            = null;
+        let cameraStream      = null;
+        let sourceType        = 'none';   // 'local' | 'ip' | 'none'
+        let ipBaseUrl         = '';
+        let scanInterval      = null;
+        let showSkeleton      = true;
+        let builtSentence     = '';
+        let lastAddedLetter   = '';
+        let letterStableCount = 0;
+        const LETTER_THRESHOLD = 3;  // Need 3 stable frames to add a letter
+        let isMicActive       = false;
+
+        // ── MediaPipe hand connections for drawing ──
+        const HAND_CONNECTIONS = [
+            [0,1],[1,2],[2,3],[3,4],       // Thumb
+            [0,5],[5,6],[6,7],[7,8],       // Index
+            [5,9],[9,10],[10,11],[11,12],   // Middle
+            [9,13],[13,14],[14,15],[15,16], // Ring
+            [13,17],[17,18],[18,19],[19,20],// Pinky
+            [0,17]                         // Palm
+        ];
+
+        // ═══ SOCKET.IO ═══════════════════════════════════════════════
+
+        function connectBackend() {
+            socket = io('https://signbridge-nk7n.onrender.com');
+
+            socket.on('connect', () => {
+                setStatus('LIVE', true);
+                showToast('Connected to SignSense backend');
+            });
+
+            socket.on('disconnect', () => {
+                setStatus('DISCONNECTED', false);
+            });
+
+            socket.on('status', (data) => {
+                if (data.ml_model) {
+                    modelLabel.textContent = 'ML Model Active';
+                } else {
+                    modelLabel.textContent = 'Heuristic Mode';
+                }
+            });
+
+            socket.on('predictions', (data) => {
+                handlePrediction(data);
+            });
+
+            socket.on('hand_status', (data) => {
+                if (data.detected) {
+                    arReticle.classList.add('hand-detected');
+                } else {
+                    arReticle.classList.remove('hand-detected');
+                }
+            });
+        }
+
+        function setStatus(text, connected) {
+            statusText.textContent = text;
+            pulseDot.classList.toggle('disconnected', !connected);
+            statusBadge.style.borderColor = connected
+                ? 'rgba(16, 185, 129, 0.4)'
+                : 'rgba(239, 68, 68, 0.4)';
+            statusBadge.querySelector('.pulse-dot').style.background = connected ? '#10B981' : '#EF4444';
+        }
+
+        // ═══ PREDICTION HANDLER ══════════════════════════════════════
+
+        function handlePrediction(data) {
+            const word = data.word;
+            const conf = data.confidence || 0;
+
+            if (!word || word === 'No hand detected' || word === '...' || word === '?') {
+                letterEl.textContent = '—';
+                confEl.textContent = '0%';
+                confFill.style.height = '0%';
+                letterStableCount = 0;
+                return;
+            }
+
+            // Update display
+            letterEl.textContent = word;
+            confEl.textContent = Math.round(conf) + '%';
+            confFill.style.height = conf + '%';
+
+            // Color based on confidence
+            if (conf > 70) {
+                confFill.style.background = '#10B981';
+                letterEl.style.color = '#10B981';
+            } else if (conf > 40) {
+                confFill.style.background = '#F59E0B';
+                letterEl.style.color = '#F59E0B';
+            } else {
+                confFill.style.background = '#EF4444';
+                letterEl.style.color = '#EF4444';
+            }
+
+            // Sentence builder logic
+            if (word === lastAddedLetter) {
+                letterStableCount++;
+            } else {
+                letterStableCount = 1;
+                lastAddedLetter = word;
+            }
+
+            // Add letter to sentence when stable and confidence is decent
+            if (letterStableCount === LETTER_THRESHOLD && conf > 50) {
+                addLetterToSentence(word);
+                letterStableCount = 0;
+            }
+
+            // Draw skeleton if landmarks provided
+            if (data.landmarks && showSkeleton) {
+                drawSkeleton(data.landmarks);
+            }
+        }
+
+        // ═══ SKELETON DRAWING ════════════════════════════════════════
+
+        function drawSkeleton(landmarks) {
+            // Size canvas to match display
+            const rect = skeletonCanvas.getBoundingClientRect();
+            skeletonCanvas.width = rect.width;
+            skeletonCanvas.height = rect.height;
+
+            skCtx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
+
+            if (!landmarks || landmarks.length < 21) return;
+
+            const w = skeletonCanvas.width;
+            const h = skeletonCanvas.height;
+
+            // If using local webcam with scaleX(-1) / mirror, flip x
+            const mirror = (sourceType === 'local');
+
+            // Draw connections
+            skCtx.strokeStyle = 'rgba(16, 185, 129, 0.7)';
+            skCtx.lineWidth = 2.5;
+            skCtx.lineCap = 'round';
+
+            for (const [a, b] of HAND_CONNECTIONS) {
+                const x1 = mirror ? (1 - landmarks[a][0]) * w : landmarks[a][0] * w;
+                const y1 = landmarks[a][1] * h;
+                const x2 = mirror ? (1 - landmarks[b][0]) * w : landmarks[b][0] * w;
+                const y2 = landmarks[b][1] * h;
+
+                skCtx.beginPath();
+                skCtx.moveTo(x1, y1);
+                skCtx.lineTo(x2, y2);
+                skCtx.stroke();
+            }
+
+            // Draw joints
+            for (let i = 0; i < landmarks.length; i++) {
+                const x = mirror ? (1 - landmarks[i][0]) * w : landmarks[i][0] * w;
+                const y = landmarks[i][1] * h;
+
+                // Fingertip = larger + brighter
+                const isTip = [4, 8, 12, 16, 20].includes(i);
+                const radius = isTip ? 6 : 4;
+                const color = isTip ? '#10B981' : 'rgba(16, 185, 129, 0.5)';
+
+                skCtx.fillStyle = color;
+                skCtx.beginPath();
+                skCtx.arc(x, y, radius, 0, 2 * Math.PI);
+                skCtx.fill();
+
+                if (isTip) {
+                    skCtx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+                    skCtx.beginPath();
+                    skCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                    skCtx.fill();
+                }
+            }
+        }
+
+        // ═══ SENTENCE BUILDER ════════════════════════════════════════
+
+        function addLetterToSentence(letter) {
+            builtSentence += letter;
+            renderSentence();
+        }
+
+        function renderSentence() {
+            sentenceText.innerHTML = builtSentence
+                ? builtSentence + '<span class="cursor-blink"></span>'
+                : '<span style="color:rgba(255,255,255,0.3)">Show signs to build text</span><span class="cursor-blink"></span>';
+        }
+
+        document.getElementById('btn-space').addEventListener('click', () => {
+            builtSentence += ' ';
+            renderSentence();
+        });
+
+        document.getElementById('btn-backspace').addEventListener('click', () => {
+            builtSentence = builtSentence.slice(0, -1);
+            renderSentence();
+        });
+
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            builtSentence = '';
+            renderSentence();
+        });
+
+        document.getElementById('btn-speak').addEventListener('click', () => {
+            if (builtSentence.trim()) {
+                const msg = new SpeechSynthesisUtterance(builtSentence);
+                msg.rate = 0.9;
+                window.speechSynthesis.speak(msg);
+                showToast('Speaking: ' + builtSentence);
+            }
+        });
+
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            if (builtSentence.trim()) {
+                navigator.clipboard.writeText(builtSentence).then(() => {
+                    showToast('Copied to clipboard');
+                });
+            }
+        });
+
+        // ═══ CAMERA SOURCES ══════════════════════════════════════════
+
+        // -- Local Webcam --
+        async function startLocalCam() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }
+                });
+                arVideo.srcObject = cameraStream;
+                arVideo.style.display = 'block';
+                arVideo.style.transform = 'scaleX(-1)';
+                ipWebcamImg.style.display = 'none';
+                placeholder.style.display = 'none';
+
+                sourceType = 'local';
+                sourceLabel.textContent = 'SRC: LOCAL WEBCAM';
+                showToast('Local webcam connected');
+
+                startScanning();
+            } catch (err) {
+                showToast('Camera access denied: ' + err.message);
+            }
+        }
+
+        // -- IP Webcam --
+        function startIPWebcam(baseUrl) {
+            // IP Webcam app only supports HTTP — auto-correct https -> http
+            let normalizedUrl = baseUrl.replace(/\/$/, '');
+            if (normalizedUrl.startsWith('https://')) {
+                normalizedUrl = 'http://' + normalizedUrl.slice('https://'.length);
+                showToast('⚠ Auto-corrected to http:// (IP Webcam requires HTTP)');
+            }
+            ipBaseUrl = normalizedUrl;
+            const streamUrl = ipBaseUrl + '/video';
+
+            // Use <img> tag for MJPEG stream (works cross-origin for video display)
+            ipWebcamImg.src = streamUrl;
+            ipWebcamImg.style.display = 'block';
+            ipWebcamImg.onerror = () => {
+                // Fallback: try /videofeed
+                ipWebcamImg.src = ipBaseUrl + '/videofeed';
+            };
+            arVideo.style.display = 'none';
+            placeholder.style.display = 'none';
+
+            sourceType = 'ip';
+            sourceLabel.textContent = 'SRC: IP WEBCAM';
+            showToast('IP Webcam connected: ' + ipBaseUrl);
+
+            startScanning();
+        }
+
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(t => t.stop());
+                cameraStream = null;
+            }
+            arVideo.style.display = 'none';
+            arVideo.srcObject = null;
+            ipWebcamImg.style.display = 'none';
+            ipWebcamImg.src = '';
+            placeholder.style.display = 'flex';
+            sourceType = 'none';
+            sourceLabel.textContent = 'SRC: NONE';
+            clearInterval(scanInterval);
+        }
+
+        // ═══ FRAME SCANNING ══════════════════════════════════════════
+
+        function startScanning() {
+            clearInterval(scanInterval);
+
+            scanInterval = setInterval(() => {
+                if (!socket || !socket.connected) return;
+
+                let capturedData = null;
+
+                if (sourceType === 'local' && arVideo.readyState === arVideo.HAVE_ENOUGH_DATA) {
+                    procCanvas.width = arVideo.videoWidth;
+                    procCanvas.height = arVideo.videoHeight;
+                    procCtx.drawImage(arVideo, 0, 0);
+                    capturedData = procCanvas.toDataURL('image/jpeg', 0.5);
+                } else if (sourceType === 'ip') {
+                    // Capture from IP webcam <img> to canvas
+                    try {
+                        // For IP webcam, we use the proxy endpoint instead
+                        captureIPFrame();
+                        return;
+                    } catch (e) {}
+                }
+
+                if (capturedData) {
+                    socket.emit('video_frame', { image: capturedData });
+                }
+            }, 150);  // ~7 FPS for sign language (sufficient)
+        }
+
+        async function captureIPFrame() {
+            try {
+                const snapUrl = `https://signbridge-nk7n.onrender.com/api/ip_webcam_snapshot?url=${encodeURIComponent(ipBaseUrl)}`;
+                const resp = await fetch(snapUrl);
+                if (!resp.ok) return;
+
+                const blob = await resp.blob();
+                const bitmap = await createImageBitmap(blob);
+
+                procCanvas.width = bitmap.width;
+                procCanvas.height = bitmap.height;
+                procCtx.drawImage(bitmap, 0, 0);
+
+                const imageData = procCanvas.toDataURL('image/jpeg', 0.5);
+                if (socket && socket.connected) {
+                    socket.emit('video_frame', { image: imageData });
+                }
+            } catch (e) {
+                // Silent fail — next interval will retry
+            }
+        }
+
+        // ═══ MODAL HANDLERS ══════════════════════════════════════════
+
+        document.getElementById('btn-connect-ip').addEventListener('click', () => {
+            let url = ipUrlInput.value.trim();
+            if (!url) {
+                connStatus.className = 'connection-status error';
+                connStatus.textContent = 'Please enter an IP Webcam URL';
+                return;
+            }
+
+            // Auto-correct https -> http (IP Webcam doesn't support HTTPS)
+            if (url.startsWith('https://')) {
+                url = 'http://' + url.slice('https://'.length);
+                ipUrlInput.value = url;
+                localStorage.setItem('signsense_ip_webcam', url);
+            }
+            // Add http:// prefix if missing
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+                ipUrlInput.value = url;
+            }
+
+            connStatus.className = 'connection-status';
+            connStatus.style.display = 'block';
+            connStatus.style.background = 'rgba(59,130,246,0.1)';
+            connStatus.style.borderColor = 'rgba(59,130,246,0.3)';
+            connStatus.style.color = '#60a5fa';
+            connStatus.textContent = 'Testing connection...';
+
+            // Test connection via backend proxy
+            fetch(`https://signbridge-nk7n.onrender.com/api/ip_webcam_snapshot?url=${encodeURIComponent(url)}`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(5000)
+            })
+            .then(r => {
+                if (r.ok) {
+                    connStatus.className = 'connection-status success';
+                    connStatus.textContent = '✓ Connection successful!';
+                    setTimeout(() => {
+                        ipModal.classList.add('hidden');
+                        startIPWebcam(url);
+                    }, 500);
+                } else {
+                    connStatus.className = 'connection-status error';
+                    connStatus.textContent = '✗ Could not reach IP Webcam. Check URL and ensure IP Webcam app is running.';
+                }
+            })
+            .catch(() => {
+                connStatus.className = 'connection-status error';
+                connStatus.textContent = '✗ Connection failed. Ensure backend is running on port 5000 and IP Webcam is accessible.';
+            });
+        });
+
+        document.getElementById('btn-use-local').addEventListener('click', () => {
+            ipModal.classList.add('hidden');
+            startLocalCam();
+        });
+
+        document.getElementById('btn-camera-source').addEventListener('click', () => {
+            stopCamera();
+            ipModal.classList.remove('hidden');
+            connStatus.className = 'connection-status';
+            connStatus.style.display = 'none';
+        });
+
+        // ═══ SKELETON TOGGLE ═════════════════════════════════════════
+
+        document.getElementById('btn-skeleton-toggle').addEventListener('click', function() {
+            showSkeleton = !showSkeleton;
+            this.classList.toggle('active', showSkeleton);
+            if (!showSkeleton) {
+                skCtx.clearRect(0, 0, skeletonCanvas.width, skeletonCanvas.height);
+            }
+            showToast(showSkeleton ? 'Skeleton overlay ON' : 'Skeleton overlay OFF');
+        });
+        // Start with skeleton active
+        document.getElementById('btn-skeleton-toggle').classList.add('active');
+
+        // ═══ MIC (Speech Input) ══════════════════════════════════════
+
+        document.getElementById('btn-mic').addEventListener('click', function() {
+            if (!isMicActive) {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) {
+                    showToast('Speech recognition not supported. Type instead.');
+                    return;
+                }
+
+                const rec = new SR();
+                rec.continuous = false;
+                rec.interimResults = false;
+                rec.lang = 'en-US';
+
+                rec.onstart = () => {
+                    isMicActive = true;
+                    document.getElementById('btn-mic').classList.add('active');
+                    document.getElementById('btn-mic').querySelector('.material-icons-round').textContent = 'mic_off';
+                    showToast('Listening...');
+                };
+
+                rec.onresult = (e) => {
+                    const transcript = e.results[0][0].transcript;
+                    builtSentence += (builtSentence ? ' ' : '') + transcript;
+                    renderSentence();
+                    showToast('Heard: ' + transcript);
+                };
+
+                rec.onerror = (e) => {
+                    if (e.error === 'network') {
+                        showToast('Speech requires internet. Use keyboard/sentence builder.');
+                    } else if (e.error === 'not-allowed') {
+                        showToast('Microphone permission denied');
+                    } else {
+                        showToast('Speech error: ' + e.error);
+                    }
+                };
+
+                rec.onend = () => {
+                    isMicActive = false;
+                    document.getElementById('btn-mic').classList.remove('active');
+                    document.getElementById('btn-mic').querySelector('.material-icons-round').textContent = 'mic';
+                };
+
+                try { rec.start(); } catch(e) { showToast('Failed to start speech: ' + e.message); }
+            }
+        });
+
+        // ═══ SETTINGS ════════════════════════════════════════════════
+
+        document.getElementById('btn-settings').addEventListener('click', () => {
+            window.location.href = 'settings.html';
+        });
+
+        // ═══ TOAST ═══════════════════════════════════════════════════
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // ═══ KEYBOARD SHORTCUTS ══════════════════════════════════════
+
+        document.addEventListener('keydown', (e) => {
+            // Don't hijack keys when user is typing in an input or textarea
+            const tag = document.activeElement && document.activeElement.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+            switch (e.key) {
+                case 'Escape': window.location.href = 'index.html'; break;
+                case ' ':
+                    e.preventDefault();
+                    builtSentence += ' ';
+                    renderSentence();
+                    break;
+                case 'Backspace':
+                    e.preventDefault();
+                    builtSentence = builtSentence.slice(0, -1);
+                    renderSentence();
+                    break;
+            }
+        });
+
+        // ═══ VISIBILITY ══════════════════════════════════════════════
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(scanInterval);
+            } else if (sourceType !== 'none') {
+                startScanning();
+            }
+        });
+
+        // ═══ CLEANUP ═════════════════════════════════════════════════
+
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+            if (socket) socket.disconnect();
+        });
+
+        // ═══ INIT ════════════════════════════════════════════════════
+
+        window.addEventListener('load', () => {
+            connectBackend();
+            renderSentence();
+
+            // Load saved IP from localStorage
+            const savedIP = localStorage.getItem('signsense_ip_webcam');
+            if (savedIP) ipUrlInput.value = savedIP;
+
+            // Save IP when changed
+            ipUrlInput.addEventListener('change', () => {
+                localStorage.setItem('signsense_ip_webcam', ipUrlInput.value.trim());
+            });
+        });
+
+    })();
+    </script>
+</body>
+</html>

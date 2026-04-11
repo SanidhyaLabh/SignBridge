@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignBridge — Let your hands talk</title>
+    <meta name="description"
+        content="SignBridge: Real-time sign language translation platform. Bridging the gap between the deaf and hearing world.">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Sora:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-center: #0d4650;
+            --bg-edge: #021215;
+            --text-main: #ffffff;
+            --text-muted: #8eadb2;
+            --text-dim: rgba(255, 255, 255, 0.35);
+            --accent: #00d2ff;
+            --accent-warm: #ffd885;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.18);
+            --surface: rgba(255, 255, 255, 0.03);
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: radial-gradient(ellipse at 50% 40%, var(--bg-center) 0%, var(--bg-edge) 70%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── STAR FIELD ── */
+        .star-field {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                radial-gradient(circle, rgba(255, 255, 255, 0.55) 1px, transparent 1px),
+                radial-gradient(circle, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+            background-size: 130px 130px, 80px 80px;
+            background-position: 0 0, 40px 40px;
+            opacity: 0.18;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 2rem 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .icon-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: border-color 0.25s, color 0.25s;
+            text-decoration: none;
+            backdrop-filter: blur(12px);
+        }
+
+        .icon-btn:hover {
+            border-color: var(--border-hover);
+            color: #fff;
+        }
+
+        .icon-btn .material-icons-round {
+            font-size: 18px;
+        }
+
+        /* ── HAMBURGER BUTTON ── */
+        .hamburger {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: border-color 0.25s;
+            backdrop-filter: blur(12px);
+            padding: 0;
+        }
+
+        .hamburger:hover {
+            border-color: var(--border-hover);
+        }
+
+        .hamburger span {
+            display: block;
+            width: 16px;
+            height: 1.5px;
+            background: var(--text-muted);
+            border-radius: 2px;
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s, background 0.25s;
+            transform-origin: center;
+        }
+
+        .hamburger:hover span {
+            background: #fff;
+        }
+
+        /* ── FULL-SCREEN MENU OVERLAY ── */
+        .menu-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 300;
+            background: radial-gradient(ellipse at 30% 50%, #0d4650 0%, #021215 75%);
+            display: flex;
+            flex-direction: column;
+            padding: 2.8rem 4rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .menu-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Top bar */
+        .menu-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5vh;
+        }
+
+        .menu-logo {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.2rem;
+            color: #fff;
+            opacity: 0.9;
+            text-decoration: none;
+        }
+
+        .menu-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 1.6rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            transition: color 0.2s;
+            font-weight: 300;
+        }
+
+        .menu-close:hover {
+            color: #fff;
+        }
+
+        /* Nav list */
+        .menu-nav {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            justify-content: center;
+            gap: 0;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 1.6rem;
+            padding: 1.3rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.85);
+            position: relative;
+            cursor: pointer;
+            transition: color 0.25s;
+
+            /* stagger in from below */
+            transform: translateY(22px);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.2s;
+        }
+
+        .menu-item:last-child {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        /* Staggered reveal when overlay opens */
+        .menu-overlay.open .menu-item {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(1) {
+            transition-delay: 0.05s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(2) {
+            transition-delay: 0.10s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(3) {
+            transition-delay: 0.15s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(4) {
+            transition-delay: 0.20s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(5) {
+            transition-delay: 0.25s;
+        }
+
+        .menu-overlay.open .menu-item:nth-child(6) {
+            transition-delay: 0.30s;
+        }
+
+        .menu-item:hover {
+            color: #fff;
+        }
+
+        .menu-item-num {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: var(--accent-warm);
+            letter-spacing: 1px;
+            min-width: 20px;
+            opacity: 0.7;
+        }
+
+        .menu-item-label {
+            font-family: 'Great Vibes', cursive;
+            font-size: clamp(2.4rem, 5vw, 4rem);
+            font-weight: 400;
+            letter-spacing: 0px;
+            line-height: 1;
+        }
+
+        .menu-item-arrow {
+            margin-left: auto;
+            font-size: 1.4rem;
+            color: var(--accent-warm);
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .menu-item:hover .menu-item-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ── BACKGROUND SIGN IMAGES ── */
+        .bg-sign {
+            position: fixed;
+            object-fit: contain;
+            filter: grayscale(100%) brightness(0.6) contrast(1.1) drop-shadow(0 0 8px rgba(255, 255, 255, 0.25)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.12));
+            opacity: 0.2;
+            pointer-events: none;
+            z-index: 1;
+            will-change: transform, filter, opacity;
+            transition: opacity 0.4s ease, filter 0.5s ease;
+        }
+
+        /* Sign sizes only — position & animation handled by JS */
+        .sign-0 {
+            width: 13vw;
+            max-width: 190px;
+        }
+
+        .sign-1 {
+            width: 14vw;
+            max-width: 200px;
+        }
+
+        .sign-2 {
+            width: 15vw;
+            max-width: 210px;
+        }
+
+        .sign-3 {
+            width: 12vw;
+            max-width: 175px;
+        }
+
+        .sign-4 {
+            width: 9vw;
+            max-width: 120px;
+            opacity: 0.12;
+        }
+
+        /* ── HERO ── */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            position: relative;
+            gap: 0;
+        }
+
+        .hero-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1.2rem;
+        }
+
+        .hero-eyebrow {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 6px 16px;
+            border-radius: 100px;
+            backdrop-filter: blur(8px);
+        }
+
+        h1 {
+            font-family: 'Great Vibes', cursive;
+            font-size: clamp(5rem, 10vw, 9rem);
+            font-weight: 400;
+            color: #fff;
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+
+        .tagline {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .hero-divider {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, transparent, var(--border-hover), transparent);
+            margin: 0.8rem auto;
+        }
+
+        .cta-container {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--border-hover);
+            color: var(--text-main);
+            padding: 0.85rem 2.2rem;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.25s, color 0.25s, border-color 0.25s;
+            text-decoration: none;
+            display: inline-block;
+            backdrop-filter: blur(8px);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn.btn-primary {
+            background: #fff;
+            color: #000;
+            border-color: #fff;
+        }
+
+        .btn.btn-primary:hover {
+            background: rgba(255, 255, 255, 0.88);
+        }
+
+        /* ── SCROLL HINT ── */
+        .scroll-hint {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-dim);
+            font-size: 0.62rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-family: 'Sora', sans-serif;
+            z-index: 10;
+        }
+
+        .scroll-hint-line {
+            width: 1px;
+            height: 40px;
+            background: linear-gradient(to bottom, var(--border-hover), transparent);
+            animation: scrollPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes scrollPulse {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* ── EXPLORE SECTION ── */
+        .explore-section {
+            height: 400vh;
+            position: relative;
+            z-index: 5;
+        }
+
+        .sticky-wrapper {
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .section-label {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-top: 6vh;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-heading {
+            font-family: 'Sora', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 360px;
+            background: rgba(255, 255, 255, 0.025);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-radius: 24px;
+            padding: 36px 36px 28px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 1.5rem;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            transition: border-color 0.3s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+
+
+
+        .card-badge {
+            font-family: 'Sora', sans-serif;
+            font-size: 0.55rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            display: block;
+            margin-bottom: 1rem;
+        }
+
+        .card h3 {
+            font-family: 'Sora', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.1;
+            letter-spacing: -0.5px;
+        }
+
+        .card-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-top: 0.6rem;
+        }
+
+        .card-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 1.2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .card-action-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-family: 'Sora', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .card-action-btn:hover {
+            background: #e8e8e8;
+            transform: translateY(-1px);
+        }
+
+        .card-arrow {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            transition: border-color 0.2s, color 0.2s;
+            cursor: pointer;
+        }
+
+        .card-arrow:hover {
+            border-color: var(--border-hover);
+            color: #fff;
+        }
+
+        .card-arrow .material-icons-round {
+            font-size: 16px;
+        }
+
+        .card-accent-bar {
+            height: 3px;
+            border-radius: 0 0 24px 24px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        /* ── COMMUNITY ── */
+        .community-section {
+            padding: 100px 10%;
+            position: relative;
+            z-index: 10;
+            border-top: 1px solid var(--border);
+        }
+
+        .community-header {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            margin-bottom: 50px;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .community-header h2 {
+            font-family: 'Sora', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .community-header p {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            max-width: 280px;
+            line-height: 1.7;
+            text-align: right;
+        }
+
+        .community-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .community-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 32px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            transition: border-color 0.25s;
+        }
+
+        .community-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .community-card-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+        }
+
+        .community-card-icon .material-icons-round {
+            font-size: 18px;
+        }
+
+        .community-card h4 {
+            font-family: 'Sora', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .community-card p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            padding: 2rem 4rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            position: relative;
+        }
+
+        footer p {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="star-field"></div>
+
+    <!-- NAV -->
+    <nav>
+        <span class="nav-brand">SignBridge</span>
+        <div class="nav-right">
+            <button class="icon-btn" title="Search">
+                <i class="material-icons-round">search</i>
+            </button>
+            <a href="settings.html" class="icon-btn" title="Settings">
+                <i class="material-icons-round">settings</i>
+            </a>
+            <button class="hamburger" id="menu-toggle" title="Menu" aria-label="Open menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- FULL-SCREEN MENU OVERLAY -->
+    <div class="menu-overlay" id="menu-overlay" role="dialog" aria-label="Navigation menu">
+        <div class="menu-topbar">
+            <a href="index.html" class="menu-logo" onclick="closeSidebar()">SignBridge</a>
+            <button class="menu-close" id="menu-close" aria-label="Close menu">&times;</button>
+        </div>
+
+        <nav class="menu-nav">
+            <a href="index.html" class="menu-item" id="ml-home">
+                <span class="menu-item-num">01</span>
+                <span class="menu-item-label">Home</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+            <a href="translate.html" class="menu-item" id="ml-translate">
+                <span class="menu-item-num">02</span>
+                <span class="menu-item-label">Sign to Text</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+            <a href="conversation.html" class="menu-item" id="ml-conversation">
+                <span class="menu-item-num">03</span>
+                <span class="menu-item-label">Conversation Mode</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+            <a href="ar.html" class="menu-item" id="ml-ar">
+                <span class="menu-item-num">04</span>
+                <span class="menu-item-label">Glasses Mode</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+            <a href="avatar.html" class="menu-item" id="ml-avatar">
+                <span class="menu-item-num">05</span>
+                <span class="menu-item-label">3D Avatar</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+            <a href="settings.html" class="menu-item" id="ml-settings">
+                <span class="menu-item-num">06</span>
+                <span class="menu-item-label">Settings</span>
+                <span class="menu-item-arrow">→</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- BACKGROUND SIGNS -->
+    <img src="image_0.png" alt="Sign 0" class="bg-sign sign-0 parallax" data-speed="0.01">
+    <img src="image_1.png" alt="Sign 1" class="bg-sign sign-1 parallax" data-speed="0.015">
+    <img src="image_2.png" alt="Sign 2" class="bg-sign sign-2 parallax" data-speed="0.008">
+    <img src="image_3.png" alt="Sign 3" class="bg-sign sign-3 parallax" data-speed="0.012">
+    <img src="image_4.png" alt="Sign 4" class="bg-sign sign-4 parallax" data-speed="0.02">
+
+    <!-- HERO -->
+    <main class="hero">
+        <div class="hero-inner parallax" data-speed="0.005">
+            <span class="hero-eyebrow">Sign Language Platform</span>
+            <h1>SignBridge</h1>
+            <p class="tagline">Let your hands do the talking</p>
+            <div class="hero-divider"></div>
+            <div class="cta-container">
+                <a href="translate.html" class="btn btn-primary" id="btn-start-translating">Start Translating</a>
+                <a href="#explore" class="btn" id="btn-explore-modes">Explore Modes</a>
+            </div>
+        </div>
+
+        <div class="scroll-hint">
+            <div class="scroll-line"></div>
+            <div class="scroll-hint-line"></div>
+            <span>Scroll</span>
+        </div>
+    </main>
+
+    <!-- EXPLORE / CAROUSEL -->
+    <section id="explore" class="explore-section">
+        <div class="sticky-wrapper">
+            <p class="section-label">Features</p>
+            <h2 class="section-heading">Explore Modes</h2>
+
+            <div class="carousel-view">
+
+                <div class="card" id="card-sign-to-text" style="border-bottom: 3px solid #db074e;">
+                    <div class="card-top">
+                        <span class="card-badge">Live — v1.0</span>
+                        <h3>Sign to Text</h3>
+                        <p class="card-desc">Real-time ISL gesture recognition via your webcam or phone camera.</p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="card-action-btn" onclick="location.href='translate.html'"
+                            id="btn-launch-translate">Launch Mode</button>
+                        <div class="card-arrow" onclick="location.href='translate.html'">
+                            <i class="material-icons-round">arrow_forward</i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" id="card-conversation" style="border-bottom: 3px solid #c1810b;">
+                    <div class="card-top">
+                        <span class="card-badge">Neural — Beta</span>
+                        <h3>Conversation</h3>
+                        <p class="card-desc">Bidirectional communication between deaf and hearing users in real time.
+                        </p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="card-action-btn" onclick="location.href='conversation.html'"
+                            id="btn-launch-conversation">Launch Mode</button>
+                        <div class="card-arrow" onclick="location.href='conversation.html'">
+                            <i class="material-icons-round">arrow_forward</i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" id="card-glasses" style="border-bottom: 3px solid #166ec0;">
+                    <div class="card-top">
+                        <span class="card-badge">AR — HUD</span>
+                        <h3>Glasses Mode</h3>
+                        <p class="card-desc">Augmented reality overlay for seamless sign recognition through a phone
+                            camera.</p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="card-action-btn" onclick="location.href='ar.html'" id="btn-launch-ar">Launch
+                            Mode</button>
+                        <div class="card-arrow" onclick="location.href='ar.html'">
+                            <i class="material-icons-round">arrow_forward</i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" id="card-avatar" style="border-bottom: 3px solid #8a0fbe;">
+                    <div class="card-top">
+                        <span class="card-badge">Labs</span>
+                        <h3>3D Avatar</h3>
+                        <p class="card-desc">Speech-to-sign translation rendered through an animated 3D ISL avatar.</p>
+                    </div>
+                    <div class="card-footer">
+                        <button class="card-action-btn" onclick="location.href='avatar.html'"
+                            id="btn-launch-avatar">Launch Mode</button>
+                        <div class="card-arrow" onclick="location.href='avatar.html'">
+                            <i class="material-icons-round">arrow_forward</i>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- COMMUNITY -->
+    <section class="community-section">
+        <div class="community-header">
+            <h2>Community</h2>
+            <p>An open platform built for collaboration and accessibility at scale.</p>
+        </div>
+        <div class="community-grid">
+            <div class="community-card">
+                <div class="community-card-icon">
+                    <i class="material-icons-round">school</i>
+                </div>
+                <h4>Learning Hub</h4>
+                <p>Collaborate on new datasets for regional sign language variants and improve model accuracy.</p>
+            </div>
+            <div class="community-card">
+                <div class="community-card-icon">
+                    <i class="material-icons-round">code</i>
+                </div>
+                <h4>Open Source</h4>
+                <p>Contribute to the SignBridge SDK on GitHub. Build integrations and extend the platform.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>SignBridge — ISL Communication Platform</p>
+        <p>Built with MediaPipe + Three.js</p>
+    </footer>
+
+    <script>
+        // ── PARALLAX
+        document.addEventListener('mousemove', (e) => {
+            const cx = window.innerWidth / 2;
+            const cy = window.innerHeight / 2;
+            const dx = cx - e.pageX;
+            const dy = cy - e.pageY;
+
+            document.querySelectorAll('.parallax').forEach(el => {
+                const speed = parseFloat(el.getAttribute('data-speed')) || 0;
+                el.style.transform = `translate(${dx * speed}px, ${dy * speed}px)`;
+            });
+
+            document.querySelectorAll('.bg-sign').forEach(sign => {
+                const rect = sign.getBoundingClientRect();
+                const sx = rect.left + rect.width / 2;
+                const sy = rect.top + rect.height / 2;
+                const dist = Math.hypot(e.clientX - sx, e.clientY - sy);
+
+                if (dist < 180) {
+                    // Close: strong white flare
+                    sign.style.opacity = '0.55';
+                    sign.style.filter = [
+                        'grayscale(80%) brightness(0.9) contrast(1.1)',
+                        'drop-shadow(0 0 12px rgba(255,255,255,0.8))',
+                        'drop-shadow(0 0 28px rgba(255,255,255,0.5))'
+                    ].join(' ');
+                } else if (dist < 320) {
+                    // Medium: gentle glow
+                    sign.style.opacity = '0.32';
+                    sign.style.filter = [
+                        'grayscale(100%) brightness(0.7) contrast(1.1)',
+                        'drop-shadow(0 0 10px rgba(255,255,255,0.45))',
+                        'drop-shadow(0 0 22px rgba(255,255,255,0.2))'
+                    ].join(' ');
+                } else {
+                    // Far: base glow
+                    sign.style.opacity = '0.2';
+                    sign.style.filter = [
+                        'grayscale(100%) brightness(0.6) contrast(1.1)',
+                        'drop-shadow(0 0 8px rgba(255,255,255,0.25))',
+                        'drop-shadow(0 0 20px rgba(255,255,255,0.12))'
+                    ].join(' ');
+                }
+            });
+        });
+
+        // ── CAROUSEL
+        const section = document.querySelector('.explore-section');
+        const cards = document.querySelectorAll('.card');
+
+        function updateCarousel() {
+            const rect = section.getBoundingClientRect();
+            const progress = Math.max(0, Math.min(1, Math.abs(rect.top) / (rect.height - window.innerHeight)));
+            const activeIndex = progress * (cards.length - 1);
+
+            cards.forEach((card, i) => {
+                const offset = i - activeIndex;
+                const absOffset = Math.abs(offset);
+                const x = offset * 400;
+                const y = Math.pow(absOffset, 2) * 80;
+                const scale = 1 - absOffset * 0.15;
+
+                card.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) scale(${scale})`;
+                card.style.opacity = Math.max(0, 1 - absOffset * 0.65);
+                card.style.zIndex = Math.round(100 - absOffset * 10);
+                card.style.pointerEvents = absOffset < 0.4 ? 'auto' : 'none';
+            });
+        }
+
+        window.addEventListener('scroll', () => requestAnimationFrame(updateCarousel));
+        updateCarousel();
+
+        // ── MENU OVERLAY TOGGLE
+        const menuToggle = document.getElementById('menu-toggle');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuClose = document.getElementById('menu-close');
+
+        function openSidebar() {
+            menuOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSidebar() {
+            menuOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        menuToggle.addEventListener('click', () => {
+            menuOverlay.classList.contains('open') ? closeSidebar() : openSidebar();
+        });
+
+        menuClose.addEventListener('click', closeSidebar);
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+        });
+
+        // ── FREE-ROAMING SIGN ANIMATION ──────────────────────────────────
+        // Each sign follows an independent Lissajous-style sinusoidal orbit.
+        // Zones are separated so signs roam freely without overlapping:
+        //
+        //   sign-0 → LEFT column,  upper half   (x:3–22%, y:5–52%)
+        //   sign-1 → RIGHT column, upper half   (x:74–91%, y:8–55%)
+        //   sign-2 → LEFT column,  lower half   (x:2–27%, y:54–86%)
+        //   sign-3 → RIGHT column, lower half   (x:70–90%, y:60–90%)
+        //   sign-4 → TOP center belt            (x:28–68%, y:2–16%)
+        //
+        (function roamingSigns() {
+            const bgSigns = Array.from(document.querySelectorAll('.bg-sign'));
+
+            // Each config: center (cx,cy) as fraction of viewport,
+            // orbit radii (rx,ry) as fractions, independent X/Y speeds,
+            // phase offset, and a gentle tilt angle (degrees)
+            const paths = [
+                { cx: 0.12, cy: 0.28, rx: 0.09, ry: 0.23, sx: 0.00021, sy: 0.00016, ph: 0.00, tilt: -4 },
+                { cx: 0.83, cy: 0.32, rx: 0.08, ry: 0.22, sx: 0.00017, sy: 0.00023, ph: 1.30, tilt: 6 },
+                { cx: 0.14, cy: 0.70, rx: 0.12, ry: 0.16, sx: 0.00026, sy: 0.00020, ph: 2.50, tilt: 10 },
+                { cx: 0.80, cy: 0.76, rx: 0.10, ry: 0.14, sx: 0.00019, sy: 0.00015, ph: 0.75, tilt: -8 },
+                { cx: 0.48, cy: 0.09, rx: 0.19, ry: 0.07, sx: 0.00013, sy: 0.00021, ph: 1.90, tilt: 2 },
+            ];
+
+            function tick(ts) {
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+
+                bgSigns.forEach((sign, i) => {
+                    const p = paths[i];
+                    if (!p) return;
+
+                    // Lissajous-style: X and Y use independent sine/cosine frequencies
+                    const px = (p.cx + Math.sin(ts * p.sx + p.ph) * p.rx) * vw;
+                    const py = (p.cy + Math.cos(ts * p.sy + p.ph) * p.ry) * vh;
+
+                    // Subtle rotation that oscillates gently
+                    const rot = p.tilt + Math.sin(ts * p.sx * 0.4 + p.ph) * 4;
+
+                    sign.style.left = px + 'px';
+                    sign.style.top = py + 'px';
+                    sign.style.transform = `rotate(${rot}deg)`;
+                });
+
+                requestAnimationFrame(tick);
+            }
+
+            requestAnimationFrame(tick);
+        })();
+    </script>
+</body>
+
+</html>

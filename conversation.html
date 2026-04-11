@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignBridge | Conversation Mode</title>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Import map: Three.js (needed for 3D avatar) -->
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+          }
+        }
+    </script>
+
+    <style>
+        /* ═══════════════════════════════════════
+           BASE & CSS VARIABLES
+           ═══════════════════════════════════════ */
+        :root {
+            --bg-center: #0d4650;
+            --bg-edge:   #021215;
+            --text-main: #ffffff;
+            --text-muted: #b0c4c7;
+            --panel-bg:  rgba(18, 35, 40, 0.85);
+            --panel-border: rgba(255,255,255,0.06);
+            --panel-header-bg: rgba(255,255,255,0.06);
+            --btn-bg:    rgba(255,255,255,0.12);
+            --btn-hover: rgba(255,255,255,0.22);
+            --accent-orange: #f59e0b;
+            --accent-blue:   #3b82f6;
+            --accent-green:  #10b981;
+            --accent-red:    #ef4444;
+        }
+
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-edge) 0%, var(--bg-center) 50%, var(--bg-edge) 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease-in-out infinite alternate;
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0%   { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+
+        /* ── ENVIRONMENT OVERLAYS ── */
+        .texture-overlay {
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            opacity: 0.07; mix-blend-mode: overlay; pointer-events: none; z-index: 0;
+        }
+        .star-field {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(255,255,255,0.9)  0.8px, transparent 0.9px),
+                radial-gradient(circle at 70% 15%, rgba(255,255,255,0.95) 0.9px, transparent 1px),
+                radial-gradient(circle at 40% 60%, rgba(255,255,255,0.8)  0.7px, transparent 0.8px),
+                radial-gradient(circle at 85% 75%, rgba(255,255,255,0.9)  0.8px, transparent 0.9px);
+            background-size: 120px 120px, 160px 160px, 100px 100px, 140px 140px;
+            opacity: 0.35;
+            animation: starsTwinkle 8s ease-in-out infinite;
+        }
+        @keyframes starsTwinkle {
+            0%, 100% { opacity: 0.35; }
+            50%       { opacity: 0.18; }
+        }
+
+        /* ── BACKGROUND SIGN IMAGES ── */
+        .bg-sign {
+            position: fixed;
+            object-fit: contain;
+            filter: grayscale(100%) brightness(0.55) contrast(1.1)
+                    drop-shadow(0 0 8px rgba(255,255,255,0.2))
+                    drop-shadow(0 0 18px rgba(255,255,255,0.08));
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: 1;
+            will-change: transform;
+            transition: filter 0.5s ease, opacity 0.4s ease;
+        }
+        /* sizes only — positions driven by JS */
+        .sign-0 { width: 13vw; max-width: 190px; }
+        .sign-1 { width: 14vw; max-width: 200px; }
+        .sign-2 { width: 15vw; max-width: 210px; }
+        .sign-3 { width: 12vw; max-width: 175px; }
+        .sign-4 { width:  9vw; max-width: 120px; opacity: 0.10; }
+
+        /* ── MENU OVERLAY ── */
+        .hamburger {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 12px;
+            width: 42px; height: 42px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 5px; cursor: pointer;
+            transition: border-color 0.25s;
+            backdrop-filter: blur(12px); padding: 0;
+        }
+        .hamburger:hover { border-color: rgba(255,255,255,0.22); }
+        .hamburger span {
+            display: block; width: 16px; height: 1.5px;
+            background: #8eadb2; border-radius: 2px;
+            transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s, background 0.25s;
+            transform-origin: center;
+        }
+        .hamburger:hover span { background: #fff; }
+
+        .menu-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(ellipse at 30% 50%, #0d4650 0%, #021215 75%);
+            display: flex; flex-direction: column;
+            padding: 2.8rem 4rem;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .menu-overlay.open { opacity: 1; pointer-events: all; }
+        .menu-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5vh; }
+        .menu-logo { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: #fff; opacity: 0.9; text-decoration: none; }
+        .menu-close { background: none; border: none; color: rgba(255,255,255,0.45); font-size: 1.6rem; cursor: pointer; line-height: 1; padding: 4px 8px; transition: color 0.2s; font-weight: 300; }
+        .menu-close:hover { color: #fff; }
+        .menu-nav { display: flex; flex-direction: column; flex: 1; justify-content: center; }
+        .menu-item {
+            display: flex; align-items: center; gap: 1.6rem;
+            padding: 1.3rem 0;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            text-decoration: none; color: rgba(255,255,255,0.85);
+            transform: translateY(22px); opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.4,0,0.2,1),
+                        opacity 0.5s cubic-bezier(0.4,0,0.2,1), color 0.2s;
+        }
+        .menu-item:last-child { border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .menu-overlay.open .menu-item { transform: translateY(0); opacity: 1; }
+        .menu-overlay.open .menu-item:nth-child(1) { transition-delay: 0.05s; }
+        .menu-overlay.open .menu-item:nth-child(2) { transition-delay: 0.10s; }
+        .menu-overlay.open .menu-item:nth-child(3) { transition-delay: 0.15s; }
+        .menu-overlay.open .menu-item:nth-child(4) { transition-delay: 0.20s; }
+        .menu-overlay.open .menu-item:nth-child(5) { transition-delay: 0.25s; }
+        .menu-overlay.open .menu-item:nth-child(6) { transition-delay: 0.30s; }
+        .menu-item:hover { color: #fff; }
+        .menu-item-num   { font-family: 'Inter', sans-serif; font-size: 0.6rem; font-weight: 600; color: #ffd885; letter-spacing: 1px; min-width: 20px; opacity: 0.7; }
+        .menu-item-label { font-family: 'Great Vibes', cursive; font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 400; line-height: 1; }
+        .menu-item-arrow { margin-left: auto; font-size: 1.4rem; color: #ffd885; opacity: 0; transform: translateX(-10px); transition: opacity 0.2s, transform 0.2s; }
+        .menu-item:hover .menu-item-arrow { opacity: 1; transform: translateX(0); }
+
+        /* ── NAVIGATION ── */
+        nav {
+            position: relative;
+            width: 100%;
+            padding: 2rem 3rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 20;
+        }
+        .nav-logo {
+            font-family: 'Great Vibes', cursive;
+            font-size: 2.8rem;
+            color: #fff;
+        }
+
+        /* ── LOAD ANIMATION ── */
+        @keyframes slideUpIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-load {
+            opacity: 0;
+            animation: slideUpIn 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+
+        /* ═══════════════════════════════════════
+           DASHBOARD LAYOUT
+           ═══════════════════════════════════════ */
+        .dashboard-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto 3rem;
+            padding: 0 2rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dashboard-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 2rem;
+            color: rgba(255,255,255,0.9);
+        }
+        .panels-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            width: 100%;
+        }
+        @media (max-width: 850px) {
+            .panels-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── COMM PANEL ── */
+        .comm-panel {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            min-height: 520px;
+        }
+        .panel-header {
+            background: var(--panel-header-bg);
+            padding: 1.1rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-body {
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-footer {
+            padding: 1.2rem 1.5rem;
+            background: rgba(0,0,0,0.15);
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        /* ── PILL BUTTONS ── */
+        .pill-btn {
+            width: 100%;
+            background: var(--btn-bg);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 0.85rem 1.2rem;
+            border-radius: 30px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.25s, border-color 0.25s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .pill-btn:hover { background: var(--btn-hover); border-color: rgba(255,255,255,0.18); }
+        .pill-btn.recording {
+            background: rgba(239,68,68,0.2);
+            border-color: rgba(239,68,68,0.5);
+            animation: pulse-recording 1.5s infinite;
+        }
+        @keyframes pulse-recording {
+            0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+            70%  { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+        .pill-btn.error-state { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); }
+
+        /* ── CAM FEED (Panel 1) ── */
+        .camera-feed {
+            flex: 1;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            min-height: 280px;
+        }
+        #user1-webcam {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .translation-overlay {
+            position: absolute;
+            bottom: 14px; left: 14px; right: 14px;
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(8px);
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            text-align: center;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: var(--accent-orange);
+        }
+        .roi-box {
+            position: absolute;
+            top: 15%; left: 46%; width: 48%; height: 68%;
+            border: 2px dashed var(--accent-green);
+            border-radius: 10px;
+            background: rgba(16,185,129,0.04);
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+        .hand-status {
+            position: absolute; top: 12px; right: 12px;
+            display: flex; align-items: center; gap: 7px;
+            background: rgba(0,0,0,0.6);
+            padding: 5px 11px; border-radius: 20px; z-index: 20;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.72rem; font-weight: 600;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+            transition: all 0.3s;
+        }
+        .status-dot.active {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        /* Finger Dashboard */
+        .finger-dashboard {
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.25);
+            border-top: 1px solid var(--panel-border);
+        }
+        .finger-item {
+            display: flex; flex-direction: column;
+            align-items: center;
+            font-size: 0.58rem; color: var(--text-muted); gap: 4px;
+        }
+        .finger-indicator {
+            width: 10px; height: 10px;
+            border-radius: 50%; background: #333;
+        }
+        .finger-indicator.active {
+            background: var(--accent-green);
+            box-shadow: 0 0 5px var(--accent-green);
+        }
+
+        /* ── AVATAR (Panel 2) ── */
+        .avatar-container {
+            flex: 1;
+            background: linear-gradient(to bottom, #111, #1a1a1a);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; min-height: 280px;
+        }
+        .avatar-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+        }
+        .avatar-placeholder .material-icons-round {
+            font-size: 72px;
+            color: var(--accent-blue);
+            opacity: 0.45;
+            margin-bottom: 12px;
+        }
+        #three-canvas {
+            position: absolute; inset: 0; z-index: 10;
+        }
+
+        /* Text input area */
+        .text-input-row {
+            display: flex; gap: 8px;
+        }
+        .text-input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .text-input-row input::placeholder { color: rgba(255,255,255,0.3); }
+        .text-input-row input:focus { border-color: rgba(59,130,246,0.5); }
+        .text-input-row .send-btn {
+            padding: 10px 16px;
+            border-radius: 20px;
+            background: rgba(59,130,246,0.2);
+            border: 1px solid rgba(59,130,246,0.3);
+            color: var(--accent-blue);
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex; align-items: center;
+        }
+        .text-input-row .send-btn:hover {
+            background: rgba(59,130,246,0.35);
+        }
+        .transcribed-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            font-style: italic;
+            padding: 0 4px;
+        }
+        .keyboard-hint {
+            font-size: 0.68rem; color: var(--text-muted);
+            display: flex; align-items: center; gap: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ENV OVERLAYS -->
+    <div class="texture-overlay"></div>
+    <div class="star-field"></div>
+
+    <!-- BACKGROUND SIGN IMAGES (same as index.html — positions driven by JS) -->
+    <img src="image_0.png" alt="" class="bg-sign sign-0" id="bgs-0">
+    <img src="image_1.png" alt="" class="bg-sign sign-1" id="bgs-1">
+    <img src="image_2.png" alt="" class="bg-sign sign-2" id="bgs-2">
+    <img src="image_3.png" alt="" class="bg-sign sign-3" id="bgs-3">
+    <img src="image_4.png" alt="" class="bg-sign sign-4" id="bgs-4">
+
+    <!-- MENU OVERLAY -->
+    <div class="menu-overlay" id="menu-overlay" role="dialog" aria-label="Navigation menu">
+        <div class="menu-topbar">
+            <a href="index.html" class="menu-logo">SignBridge</a>
+            <button class="menu-close" id="menu-close" aria-label="Close menu">&times;</button>
+        </div>
+        <nav class="menu-nav">
+            <a href="index.html"       class="menu-item"><span class="menu-item-num">01</span><span class="menu-item-label">Home</span><span class="menu-item-arrow">→</span></a>
+            <a href="translate.html"   class="menu-item"><span class="menu-item-num">02</span><span class="menu-item-label">Sign to Text</span><span class="menu-item-arrow">→</span></a>
+            <a href="conversation.html" class="menu-item"><span class="menu-item-num">03</span><span class="menu-item-label">Conversation Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="ar.html"          class="menu-item"><span class="menu-item-num">04</span><span class="menu-item-label">Glasses Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="avatar.html"      class="menu-item"><span class="menu-item-num">05</span><span class="menu-item-label">3D Avatar</span><span class="menu-item-arrow">→</span></a>
+            <a href="settings.html"    class="menu-item"><span class="menu-item-num">06</span><span class="menu-item-label">Settings</span><span class="menu-item-arrow">→</span></a>
+        </nav>
+    </div>
+
+    <!-- NAV -->
+    <nav class="animate-load" style="animation-delay:0s;">
+        <div class="nav-logo">SignBridge</div>
+        <button class="hamburger" id="menu-toggle" aria-label="Open menu">
+            <span></span><span></span><span></span>
+        </button>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-wrapper animate-load" style="animation-delay:0.15s;">
+        <h2 class="dashboard-title">CONVERSATION MODE</h2>
+
+        <div class="panels-grid">
+
+            <!-- ══ PANEL 1: Deaf User — Sign Input ══ -->
+            <div class="comm-panel">
+                <div class="panel-header">
+                    <span>
+                        <span class="material-icons-round" style="font-size:16px;vertical-align:middle;color:var(--accent-orange);margin-right:6px;">sign_language</span>
+                        User 1 — Sign Input
+                    </span>
+                    <!-- Enable camera button preserved exactly -->
+                    <button id="start-cam-btn" class="pill-btn" style="width:auto;padding:6px 16px;font-size:0.82rem;">
+                        <span class="material-icons-round" style="font-size:16px;">videocam</span> Enable
+                    </button>
+                </div>
+
+                <div class="panel-body">
+                    <!-- Camera feed -->
+                    <div class="camera-feed" id="cam-container">
+                        <div id="video-placeholder" style="text-align:center;">
+                            <span class="material-icons-round" style="font-size:56px;color:rgba(255,255,255,0.15);">person</span>
+                        </div>
+                        <video id="user1-webcam" autoplay playsinline></video>
+                        <canvas id="hidden-canvas" style="display:none;"></canvas>
+                        <!-- ROI Box -->
+                        <div id="roi-visual" class="roi-box"></div>
+                        <!-- Hand Status -->
+                        <div class="hand-status">
+                            <div id="hand-dot" class="status-dot"></div>
+                            <span id="hand-text" style="color:var(--text-muted);">Hand Not Detected</span>
+                        </div>
+                        <!-- Live Translation -->
+                        <div class="translation-overlay" id="user1-translation">Waiting for gestures…</div>
+                    </div>
+
+                    <!-- Finger Dashboard -->
+                    <div class="finger-dashboard">
+                        <div class="finger-item"><div id="f-thumb"  class="finger-indicator"></div>Thumb</div>
+                        <div class="finger-item"><div id="f-index"  class="finger-indicator"></div>Index</div>
+                        <div class="finger-item"><div id="f-middle" class="finger-indicator"></div>Middle</div>
+                        <div class="finger-item"><div id="f-ring"   class="finger-indicator"></div>Ring</div>
+                        <div class="finger-item"><div id="f-pinky"  class="finger-indicator"></div>Pinky</div>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <!-- TTS toggle — preserved exactly -->
+                    <button id="tts-toggle-btn" class="pill-btn">
+                        <span class="material-icons-round">volume_up</span> Auto-Speak Signs (ON)
+                    </button>
+                </div>
+            </div>
+
+            <!-- ══ PANEL 2: Hearing User — Voice Input ══ -->
+            <div class="comm-panel">
+                <div class="panel-header">
+                    <span>
+                        <span class="material-icons-round" style="font-size:16px;vertical-align:middle;color:var(--accent-blue);margin-right:6px;">record_voice_over</span>
+                        User 2 — Voice Input
+                    </span>
+                    <span style="font-size:0.72rem;background:rgba(16,185,129,0.15);color:var(--accent-green);padding:3px 10px;border-radius:20px;border:1px solid rgba(16,185,129,0.25);">3D Avatar Active</span>
+                </div>
+
+                <div class="panel-body">
+                    <!-- 3D Avatar container -->
+                    <div class="avatar-container">
+                        <div class="avatar-placeholder">
+                            <span class="material-icons-round">accessibility_new</span>
+                            <p>3D avatar ready to sign</p>
+                        </div>
+                        <!-- Three.js canvas — preserved exactly -->
+                        <div id="three-canvas"></div>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <!-- Mic row: mic button + keyboard toggle — preserved exactly -->
+                    <div style="display:flex;gap:8px;">
+                        <button id="mic-btn" class="pill-btn" style="flex:1;">
+                            <span class="material-icons-round">mic</span> Tap to Speak
+                        </button>
+                        <button id="mic-init-btn" class="pill-btn" style="width:46px;flex:none;padding:0;border-radius:50%;" title="Text input">
+                            <span class="material-icons-round">keyboard</span>
+                        </button>
+                    </div>
+
+                    <!-- Text input fallback — preserved exactly -->
+                    <div id="text-input-area">
+                        <div class="keyboard-hint">
+                            <span class="material-icons-round" style="font-size:13px;">keyboard</span>
+                            No internet? Type your message below:
+                        </div>
+                        <div class="text-input-row">
+                            <input type="text" id="user2-text-input" placeholder="Type message for avatar to sign…">
+                            <button id="text-send-btn" class="send-btn">
+                                <span class="material-icons-round">send</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Transcription display -->
+                    <div class="transcribed-label" id="transcribed-text">
+                        "Detected speech will appear here…"
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Socket.IO & functional scripts — preserved exactly as before -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/gesture_recognition.js"></script>
+    <script type="module" src="js/3d_engine/isl_avatar_controller.js"></script>
+
+    <script>
+        /* ═══════════════════════════════════════════════
+           ALL FUNCTIONAL CODE — IDENTICAL TO ORIGINAL
+           ═══════════════════════════════════════════════ */
+        const video             = document.getElementById('user1-webcam');
+        const canvas            = document.getElementById('hidden-canvas');
+        const ctx               = canvas ? canvas.getContext('2d', { willReadFrequently: true }) : null;
+        const startBtn          = document.getElementById('start-cam-btn');
+        const placeholder       = document.getElementById('video-placeholder');
+        const translationOverlay = document.getElementById('user1-translation');
+        const ttsBtn            = document.getElementById('tts-toggle-btn');
+        const micBtn            = document.getElementById('mic-btn');
+        const transcribedText   = document.getElementById('transcribed-text');
+
+        let streamProcessInterval;
+        let socket;
+        let isCamActive   = false;
+        let isTTSActive   = true;
+        let lastSpokenWord = '';
+
+        // TTS Toggle
+        if (ttsBtn) {
+            ttsBtn.addEventListener('click', () => {
+                isTTSActive = !isTTSActive;
+                if (isTTSActive) {
+                    ttsBtn.innerHTML = '<span class="material-icons-round">volume_up</span> Auto-Speak Signs (ON)';
+                    ttsBtn.classList.remove('error-state');
+                } else {
+                    ttsBtn.innerHTML = '<span class="material-icons-round">volume_off</span> Auto-Speak Signs (OFF)';
+                    ttsBtn.classList.add('error-state');
+                }
+            });
+        }
+
+        function connectBackend() {
+            if (!socket) {
+                socket = io('https://signbridge-nk7n.onrender.com');
+                socket.on('connect', () => console.log('Connected to backend'));
+
+                socket.on('predictions', (data) => {
+                    if (data.word && data.word !== 'No hand detected') {
+                        translationOverlay.textContent = data.word;
+                        if (isTTSActive && signSenseAR.browserSupport.speechSynthesis && data.word !== lastSpokenWord) {
+                            signSenseAR.speakText(data.word, { rate: 0.9, pitch: 1.0 });
+                            lastSpokenWord = data.word;
+                        }
+                        updateFingerIndicators(data.word);
+                    }
+                });
+
+                socket.on('hand_status', (data) => {
+                    const dot  = document.getElementById('hand-dot');
+                    const text = document.getElementById('hand-text');
+                    if (dot && text) {
+                        if (data.detected) {
+                            dot.classList.add('active');
+                            text.textContent = 'Hand Detected';
+                            text.style.color = 'var(--accent-green)';
+                        } else {
+                            dot.classList.remove('active');
+                            text.textContent = 'Hand Not Detected';
+                            text.style.color = 'var(--text-muted)';
+                        }
+                    }
+                });
+            } else if (!socket.connected) {
+                socket.connect();
+            }
+        }
+
+        function updateFingerIndicators(gesture) {
+            ['f-thumb','f-index','f-middle','f-ring','f-pinky'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            const gestureMap = {
+                'fist':          [],
+                'point':         ['f-index'],
+                'peace':         ['f-index','f-middle'],
+                'three_fingers': ['f-index','f-middle','f-ring'],
+                'open_hand':     ['f-thumb','f-index','f-middle','f-ring','f-pinky'],
+                'thumbs_up':     ['f-thumb'],
+                'point_index':   ['f-index']
+            };
+            (gestureMap[gesture] || []).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('active');
+            });
+        }
+
+        // Camera controls
+        if (startBtn) {
+            startBtn.addEventListener('click', async () => {
+                if (isCamActive) {
+                    if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+                    video.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'block';
+                    const roi = document.getElementById('roi-visual');
+                    if (roi) roi.style.display = 'none';
+                    clearInterval(streamProcessInterval);
+                    if (socket) socket.disconnect();
+                    startBtn.innerHTML = '<span class="material-icons-round" style="font-size:16px;">videocam</span> Enable';
+                    startBtn.classList.remove('error-state');
+                    translationOverlay.textContent = 'Waiting for gestures…';
+                    isCamActive = false;
+                } else {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        video.srcObject = stream;
+                        video.style.transform = 'scaleX(-1)';
+                        video.style.display = 'block';
+                        if (placeholder) placeholder.style.display = 'none';
+                        const roi = document.getElementById('roi-visual');
+                        if (roi) roi.style.display = 'flex';
+                        connectBackend();
+                        streamProcessInterval = setInterval(() => {
+                            if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
+                                canvas.width  = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                const imageData = canvas.toDataURL('image/jpeg', 0.5);
+                                if (socket && socket.connected) socket.emit('video_frame', { image: imageData });
+                            }
+                        }, 100);
+                        startBtn.innerHTML = '<span class="material-icons-round" style="font-size:16px;">videocam_off</span> Stop';
+                        startBtn.classList.add('error-state');
+                        isCamActive = true;
+                    } catch (err) {
+                        console.error('Camera access denied:', err);
+                        if (typeof signSenseAR !== 'undefined') signSenseAR.showNotification('Please enable camera access.', 'error');
+                    }
+                }
+            });
+        }
+
+        // Helper: process text for ISL via backend
+        async function processForISL(text) {
+            try {
+                const resp = await fetch('https://signbridge-nk7n.onrender.com/api/process_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (resp.ok) { const d = await resp.json(); return d.isl_structure || text.toUpperCase(); }
+            } catch (e) { /* backend not running */ }
+            return text.toUpperCase();
+        }
+
+        // Speech recognition for User 2
+        let user2Recognition = null;
+        let isUser2Recording = false;
+
+        function initUser2Speech() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) return null;
+            const rec = new SR();
+            rec.continuous = false; rec.interimResults = true; rec.lang = 'en-US';
+            rec.onstart  = () => { isUser2Recording = true; micBtn.classList.add('recording'); micBtn.innerHTML = '<span class="material-icons-round">stop</span> Listening…'; };
+            rec.onresult = (event) => {
+                let final = '', interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const t = event.results[i][0].transcript;
+                    event.results[i].isFinal ? (final += t) : (interim += t);
+                }
+                if (transcribedText) transcribedText.textContent = `"${final || interim}"`;
+                if (final) handleUser2Text(final);
+            };
+            rec.onerror = (e) => {
+                console.error('Speech error:', e.error);
+                isUser2Recording = false;
+                micBtn.classList.remove('recording');
+                micBtn.innerHTML = '<span class="material-icons-round">mic</span> Tap to Speak';
+                if (e.error === 'network') {
+                    const ti = document.getElementById('user2-text-input');
+                    if (ti) { ti.focus(); ti.placeholder = 'Speech needs internet — type here instead…'; ti.style.borderColor = 'rgba(245,158,11,0.5)'; }
+                    if (typeof signSenseAR !== 'undefined') signSenseAR.showNotification('🔇 Speech requires internet. Use the text input below.', 'warning');
+                } else if (e.error === 'not-allowed') {
+                    if (typeof signSenseAR !== 'undefined') signSenseAR.showNotification('Microphone permission denied. Use text input.', 'error');
+                }
+            };
+            rec.onend = () => { isUser2Recording = false; micBtn.classList.remove('recording'); micBtn.innerHTML = '<span class="material-icons-round">mic</span> Tap to Speak'; };
+            return rec;
+        }
+
+        async function handleUser2Text(text) {
+            const islText = await processForISL(text);
+            if (transcribedText) transcribedText.textContent = `"${text}"`;
+            if (window.islAvatarController) window.islAvatarController.animateText(islText);
+            if (socket && socket.connected) socket.emit('avatar_command', { command: 'animate', text: islText });
+        }
+
+        if (micBtn) {
+            micBtn.addEventListener('click', () => {
+                if (!user2Recognition) user2Recognition = initUser2Speech();
+                if (!user2Recognition) {
+                    const tia = document.getElementById('text-input-area');
+                    if (tia) tia.style.display = 'block';
+                    if (typeof signSenseAR !== 'undefined') signSenseAR.showNotification('Speech not supported. Use text input.', 'warning');
+                    return;
+                }
+                isUser2Recording ? user2Recognition.stop() : (function(){ try { user2Recognition.start(); } catch(e){ console.error(e); } })();
+            });
+        }
+
+        // Text input area toggle
+        const micInitBtn = document.getElementById('mic-init-btn');
+        if (micInitBtn) {
+            micInitBtn.addEventListener('click', () => {
+                const tia = document.getElementById('text-input-area');
+                if (tia) {
+                    const hidden = tia.style.display === 'none';
+                    tia.style.display = hidden ? 'block' : 'none';
+                    if (hidden) { const ti = document.getElementById('user2-text-input'); if (ti) ti.focus(); }
+                }
+            });
+        }
+
+        // Text send
+        const textSendBtn = document.getElementById('text-send-btn');
+        const textInput   = document.getElementById('user2-text-input');
+        if (textSendBtn && textInput) {
+            textSendBtn.addEventListener('click', () => { const t = textInput.value.trim(); if (t) { handleUser2Text(t); textInput.value = ''; } });
+            textInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') textSendBtn.click(); });
+        }
+
+        /* ═══════════════════════════════════════════════
+           MENU OVERLAY TOGGLE
+           ═══════════════════════════════════════════════ */
+        const menuToggle  = document.getElementById('menu-toggle');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuClose   = document.getElementById('menu-close');
+        function openMenu()  { menuOverlay.classList.add('open');    document.body.style.overflow = 'hidden'; }
+        function closeMenu() { menuOverlay.classList.remove('open'); document.body.style.overflow = ''; }
+        menuToggle.addEventListener('click', () => menuOverlay.classList.contains('open') ? closeMenu() : openMenu());
+        menuClose.addEventListener('click', closeMenu);
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+        /* ═══════════════════════════════════════════════
+           FREE-ROAMING SIGN ANIMATIONS (same as index.html)
+           Zone map:
+             sign-0  LEFT,  upper   (x:3–21%, y:5–51%)
+             sign-1  RIGHT, upper   (x:75–91%, y:10–54%)
+             sign-2  LEFT,  lower   (x:2–26%, y:54–86%)
+             sign-3  RIGHT, lower   (x:70–90%, y:62–90%)
+             sign-4  TOP center     (x:29–67%, y:2–16%)
+           ═══════════════════════════════════════════════ */
+        (function roamingSigns() {
+            const signs = Array.from(document.querySelectorAll('.bg-sign'));
+            const paths = [
+                { cx:0.12, cy:0.28, rx:0.09, ry:0.23, sx:0.00021, sy:0.00016, ph:0.00, tilt:-4 },
+                { cx:0.83, cy:0.32, rx:0.08, ry:0.22, sx:0.00017, sy:0.00023, ph:1.30, tilt: 6 },
+                { cx:0.14, cy:0.70, rx:0.12, ry:0.16, sx:0.00026, sy:0.00020, ph:2.50, tilt:10 },
+                { cx:0.80, cy:0.76, rx:0.10, ry:0.14, sx:0.00019, sy:0.00015, ph:0.75, tilt:-8 },
+                { cx:0.48, cy:0.09, rx:0.19, ry:0.07, sx:0.00013, sy:0.00021, ph:1.90, tilt: 2 },
+            ];
+            function tick(ts) {
+                const vw = window.innerWidth, vh = window.innerHeight;
+                signs.forEach((sign, i) => {
+                    const p = paths[i]; if (!p) return;
+                    const px  = (p.cx + Math.sin(ts * p.sx + p.ph) * p.rx) * vw;
+                    const py  = (p.cy + Math.cos(ts * p.sy + p.ph) * p.ry) * vh;
+                    const rot = p.tilt + Math.sin(ts * p.sx * 0.4 + p.ph) * 4;
+                    sign.style.left      = px + 'px';
+                    sign.style.top       = py + 'px';
+                    sign.style.transform = `rotate(${rot}deg)`;
+                });
+                requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        })();
+
+        /* PROXIMITY GLOW for background signs */
+        document.addEventListener('mousemove', (e) => {
+            document.querySelectorAll('.bg-sign').forEach(sign => {
+                const r = sign.getBoundingClientRect();
+                const dist = Math.hypot(e.clientX - (r.left + r.width/2), e.clientY - (r.top + r.height/2));
+                if (dist < 220) {
+                    sign.style.opacity = '0.45';
+                    sign.style.filter  = 'grayscale(100%) brightness(1.1) contrast(1.1) drop-shadow(0 0 18px rgba(255,255,255,0.55))';
+                } else {
+                    sign.style.opacity = sign.classList.contains('sign-4') ? '0.10' : '0.18';
+                    sign.style.filter  = 'grayscale(100%) brightness(0.55) contrast(1.1) drop-shadow(0 0 8px rgba(255,255,255,0.2))';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

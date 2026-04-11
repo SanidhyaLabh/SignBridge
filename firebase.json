@@ -1,0 +1,23 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "archive.zip",
+      "backend/**",
+      "venv/**",
+      ".env",
+      "*.py",
+      "3davatar_repo_use/**",
+      "sign_to_text _and_speech/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

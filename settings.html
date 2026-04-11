@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings | SignSense AR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <style>
+        .hamburger{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;width:42px;height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;cursor:pointer;transition:border-color 0.25s;backdrop-filter:blur(12px);padding:0;}
+        .hamburger:hover{border-color:rgba(255,255,255,0.18);}
+        .hamburger span{display:block;width:16px;height:1.5px;background:#8eadb2;border-radius:2px;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1),opacity 0.25s,background 0.25s;transform-origin:center;}
+        .hamburger:hover span{background:#fff;}
+        .menu-overlay{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 30% 50%,#0d4650 0%,#021215 75%);display:flex;flex-direction:column;padding:2.8rem 4rem;opacity:0;pointer-events:none;transition:opacity 0.4s cubic-bezier(0.4,0,0.2,1);}
+        .menu-overlay.open{opacity:1;pointer-events:all;}
+        .menu-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:5vh;}
+        .menu-logo{font-family:'Great Vibes',cursive;font-size:2.2rem;color:#fff;opacity:0.9;text-decoration:none;}
+        .menu-close{background:none;border:none;color:rgba(255,255,255,0.45);font-size:1.6rem;cursor:pointer;line-height:1;padding:4px 8px;transition:color 0.2s;font-weight:300;}
+        .menu-close:hover{color:#fff;}
+        .menu-nav{display:flex;flex-direction:column;flex:1;justify-content:center;gap:0;}
+        .menu-item{display:flex;align-items:center;gap:1.6rem;padding:1.3rem 0;border-top:1px solid rgba(255,255,255,0.07);text-decoration:none;color:rgba(255,255,255,0.85);transform:translateY(22px);opacity:0;transition:transform 0.5s cubic-bezier(0.4,0,0.2,1),opacity 0.5s cubic-bezier(0.4,0,0.2,1),color 0.2s;}
+        .menu-item:last-child{border-bottom:1px solid rgba(255,255,255,0.07);}
+        .menu-overlay.open .menu-item{transform:translateY(0);opacity:1;}
+        .menu-overlay.open .menu-item:nth-child(1){transition-delay:0.05s;}.menu-overlay.open .menu-item:nth-child(2){transition-delay:0.10s;}.menu-overlay.open .menu-item:nth-child(3){transition-delay:0.15s;}.menu-overlay.open .menu-item:nth-child(4){transition-delay:0.20s;}.menu-overlay.open .menu-item:nth-child(5){transition-delay:0.25s;}.menu-overlay.open .menu-item:nth-child(6){transition-delay:0.30s;}
+        .menu-item:hover{color:#fff;}
+        .menu-item-num{font-family:'Inter',sans-serif;font-size:0.6rem;font-weight:600;color:#ffd885;letter-spacing:1px;min-width:20px;opacity:0.7;}
+        .menu-item-label{font-family:'Great Vibes',cursive;font-size:clamp(2.4rem,5vw,4rem);font-weight:400;line-height:1;}
+        .menu-item-arrow{margin-left:auto;font-size:1.4rem;color:#ffd885;opacity:0;transform:translateX(-10px);transition:opacity 0.2s,transform 0.2s;}
+        .menu-item:hover .menu-item-arrow{opacity:1;transform:translateX(0);}
+    </style>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .settings-container {
+            padding: calc(var(--nav-height) + 40px) 5% 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            min-height: calc(100vh - var(--nav-height));
+        }
+
+        .settings-header {
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--clr-glass-border);
+            padding-bottom: 20px;
+        }
+
+        .settings-header h2 {
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .settings-group {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--clr-glass-border);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .settings-group h3 {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: var(--clr-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .setting-label {
+            font-weight: 500;
+        }
+
+        .setting-desc {
+            font-size: 0.85rem;
+            color: var(--clr-text-muted);
+            margin-top: 4px;
+        }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: .4s;
+            border-radius: 34px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--clr-primary);
+            border-color: var(--clr-primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Select box */
+        .select-box {
+            background: rgba(0,0,0,0.4);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            outline: none;
+            font-family: var(--font-body);
+            cursor: pointer;
+            min-width: 200px;
+        }
+
+        .select-box:focus {
+            border-color: var(--clr-primary);
+        }
+
+        /* Range slider */
+        .range-slider {
+            width: 200px;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--clr-primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .range-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--clr-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .range-value {
+            display: inline-block;
+            margin-left: 12px;
+            min-width: 40px;
+            text-align: center;
+            color: var(--clr-primary);
+            font-weight: 600;
+        }
+
+        /* Status indicators */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-online {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--clr-success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-offline {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--clr-error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Action buttons */
+        .settings-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+            justify-content: flex-end;
+        }
+
+        .info-card {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--border-radius);
+            padding: 16px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .info-card .material-icons-round {
+            color: var(--clr-primary);
+            font-size: 24px;
+        }
+
+        .info-text {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--clr-text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .settings-container {
+                padding: calc(var(--nav-height) + 20px) 3% 30px;
+            }
+            
+            .setting-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .select-box, .range-slider {
+                width: 100%;
+            }
+            
+            .settings-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body class="theme-dark">
+    <!-- MENU OVERLAY -->
+    <div class="menu-overlay" id="menu-overlay">
+        <div class="menu-topbar">
+            <a href="index.html" class="menu-logo">SignBridge</a>
+            <button class="menu-close" id="menu-close">&times;</button>
+        </div>
+        <nav class="menu-nav">
+            <a href="index.html" class="menu-item"><span class="menu-item-num">01</span><span class="menu-item-label">Home</span><span class="menu-item-arrow">→</span></a>
+            <a href="translate.html" class="menu-item"><span class="menu-item-num">02</span><span class="menu-item-label">Sign to Text</span><span class="menu-item-arrow">→</span></a>
+            <a href="conversation.html" class="menu-item"><span class="menu-item-num">03</span><span class="menu-item-label">Conversation Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="ar.html" class="menu-item"><span class="menu-item-num">04</span><span class="menu-item-label">Glasses Mode</span><span class="menu-item-arrow">→</span></a>
+            <a href="avatar.html" class="menu-item"><span class="menu-item-num">05</span><span class="menu-item-label">3D Avatar</span><span class="menu-item-arrow">→</span></a>
+            <a href="settings.html" class="menu-item"><span class="menu-item-num">06</span><span class="menu-item-label">Settings</span><span class="menu-item-arrow">→</span></a>
+        </nav>
+    </div>
+    <nav style="position:fixed;top:0;width:100%;padding:1.2rem 2.5rem;display:flex;justify-content:space-between;align-items:center;z-index:200;background:rgba(2,18,21,0.6);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.05);">
+        <a href="index.html" style="font-family:'Great Vibes',cursive;font-size:2rem;color:#fff;text-decoration:none;opacity:0.9;">SignBridge</a>
+        <button class="hamburger" id="menu-toggle" aria-label="Open menu"><span></span><span></span><span></span></button>
+    </nav>
+
+    <!-- Settings Workspace -->
+    <div class="settings-container">
+        <div class="settings-header">
+            <h2><span class="material-icons-round" style="color: var(--clr-text-muted); font-size: 32px;">settings_suggest</span> Application Preferences</h2>
+        </div>
+
+        <!-- Camera & Environment -->
+        <div class="settings-group">
+            <h3><span class="material-icons-round">camera</span> Device & Environment</h3>
+            
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Hardware Acceleration</div>
+                    <div class="setting-desc">Use GPU for MediaPipe ML inference (Reload required)</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="hardware-acceleration" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Default Camera</div>
+                    <div class="setting-desc">Select which camera to use for gesture recognition</div>
+                </div>
+                <select class="select-box" id="camera-select">
+                    <option value="user">Integrated Camera (Front)</option>
+                    <option value="environment">Rear Camera</option>
+                    <option value="external">USB Video Device</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Camera Quality</div>
+                    <div class="setting-desc">Balance between quality and performance</div>
+                </div>
+                <select class="select-box" id="camera-quality">
+                    <option value="high">High (1080p)</option>
+                    <option value="medium" selected>Medium (720p)</option>
+                    <option value="low">Low (480p)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Speech & Avatar -->
+        <div class="settings-group">
+            <h3><span class="material-icons-round">record_voice_over</span> AI Interpretation</h3>
+            
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Speech Output Language</div>
+                    <div class="setting-desc">The spoken language mapped to sign input</div>
+                </div>
+                <select class="select-box" id="speech-language">
+                    <option value="en-US" selected>English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="hi-IN">Hindi (India)</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">3D Avatar Quality</div>
+                    <div class="setting-desc">Adjust rendering quality for performance</div>
+                </div>
+                <select class="select-box" id="avatar-quality">
+                    <option value="high">High (60 FPS, Shadows on)</option>
+                    <option value="medium" selected>Medium (30 FPS)</option>
+                    <option value="low">Low (Minimal resources)</option>
+                </select>
+            </div>
+            
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Read Aloud Translations</div>
+                    <div class="setting-desc">Automatically trigger Text-to-Speech upon gesture detection</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="auto-tts" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Speech Speed</div>
+                    <div class="setting-desc">Adjust the speed of text-to-speech output</div>
+                </div>
+                <div>
+                    <input type="range" class="range-slider" id="speech-speed" min="0.5" max="2" step="0.1" value="1">
+                    <span class="range-value" id="speech-speed-value">1.0x</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recognition Settings -->
+        <div class="settings-group">
+            <h3><span class="material-icons-round">psychology</span> Gesture Recognition</h3>
+            
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Detection Sensitivity</div>
+                    <div class="setting-desc">How sensitive the gesture detection should be</div>
+                </div>
+                <div>
+                    <input type="range" class="range-slider" id="detection-sensitivity" min="0.3" max="0.9" step="0.1" value="0.5">
+                    <span class="range-value" id="sensitivity-value">0.5</span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Confidence Threshold</div>
+                    <div class="setting-desc">Minimum confidence required for gesture recognition</div>
+                </div>
+                <div>
+                    <input type="range" class="range-slider" id="confidence-threshold" min="0.5" max="0.95" step="0.05" value="0.8">
+                    <span class="range-value" id="confidence-value">80%</span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Smoothing Level</div>
+                    <div class="setting-desc">Reduce jitter in gesture recognition results</div>
+                </div>
+                <select class="select-box" id="smoothing-level">
+                    <option value="low">Low (Fast response)</option>
+                    <option value="medium" selected>Medium (Balanced)</option>
+                    <option value="high">High (Smooth but slower)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="settings-group">
+            <h3><span class="material-icons-round">monitor_heart</span> System Status</h3>
+            
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Backend Connection</div>
+                    <div class="setting-desc">Connection status to the SignSense AR server</div>
+                </div>
+                <div class="status-indicator status-offline" id="backend-status">
+                    <span class="status-dot"></span>
+                    <span>Offline</span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">ML Model Status</div>
+                    <div class="setting-desc">Sign language recognition model availability</div>
+                </div>
+                <div class="status-indicator status-online">
+                    <span class="status-dot"></span>
+                    <span>Loaded</span>
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <div>
+                    <div class="setting-label">Browser Support</div>
+                    <div class="setting-desc">Required browser features availability</div>
+                </div>
+                <div class="status-indicator status-online">
+                    <span class="status-dot"></span>
+                    <span>Full Support</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="info-card">
+            <span class="material-icons-round">info</span>
+            <div class="info-text">
+                Some settings may require a page reload to take effect. Make sure your browser has granted necessary permissions for camera and microphone access.
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="settings-actions">
+            <button class="btn btn-secondary" id="reset-settings">
+                <span class="material-icons-round">restore</span> Reset to Defaults
+            </button>
+            <button class="btn btn-primary" id="save-settings">
+                <span class="material-icons-round">save</span> Save Settings
+            </button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Settings management
+        class SettingsManager {
+            constructor() {
+                this.settings = this.loadSettings();
+                this.initializeEventListeners();
+                this.updateUI();
+                this.checkSystemStatus();
+            }
+
+            loadSettings() {
+                const defaultSettings = {
+                    hardwareAcceleration: true,
+                    cameraSelect: 'user',
+                    cameraQuality: 'medium',
+                    speechLanguage: 'en-US',
+                    avatarQuality: 'medium',
+                    autoTTS: true,
+                    speechSpeed: 1.0,
+                    detectionSensitivity: 0.5,
+                    confidenceThreshold: 0.8,
+                    smoothingLevel: 'medium'
+                };
+
+                const saved = localStorage.getItem('signsense-settings');
+                return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+            }
+
+            saveSettings() {
+                localStorage.setItem('signsense-settings', JSON.stringify(this.settings));
+            }
+
+            initializeEventListeners() {
+                // Toggle switches
+                document.getElementById('hardware-acceleration').addEventListener('change', (e) => {
+                    this.settings.hardwareAcceleration = e.target.checked;
+                });
+
+                document.getElementById('auto-tts').addEventListener('change', (e) => {
+                    this.settings.autoTTS = e.target.checked;
+                });
+
+                // Select boxes
+                document.getElementById('camera-select').addEventListener('change', (e) => {
+                    this.settings.cameraSelect = e.target.value;
+                });
+
+                document.getElementById('camera-quality').addEventListener('change', (e) => {
+                    this.settings.cameraQuality = e.target.value;
+                });
+
+                document.getElementById('speech-language').addEventListener('change', (e) => {
+                    this.settings.speechLanguage = e.target.value;
+                });
+
+                document.getElementById('avatar-quality').addEventListener('change', (e) => {
+                    this.settings.avatarQuality = e.target.value;
+                });
+
+                document.getElementById('smoothing-level').addEventListener('change', (e) => {
+                    this.settings.smoothingLevel = e.target.value;
+                });
+
+                // Range sliders
+                document.getElementById('speech-speed').addEventListener('input', (e) => {
+                    this.settings.speechSpeed = parseFloat(e.target.value);
+                    document.getElementById('speech-speed-value').textContent = this.settings.speechSpeed.toFixed(1) + 'x';
+                });
+
+                document.getElementById('detection-sensitivity').addEventListener('input', (e) => {
+                    this.settings.detectionSensitivity = parseFloat(e.target.value);
+                    document.getElementById('sensitivity-value').textContent = this.settings.detectionSensitivity.toFixed(1);
+                });
+
+                document.getElementById('confidence-threshold').addEventListener('input', (e) => {
+                    this.settings.confidenceThreshold = parseFloat(e.target.value);
+                    document.getElementById('confidence-value').textContent = Math.round(this.settings.confidenceThreshold * 100) + '%';
+                });
+
+                // Action buttons
+                document.getElementById('save-settings').addEventListener('click', () => {
+                    this.saveSettings();
+                    signSenseAR.showNotification('Settings saved successfully!', 'success');
+                });
+
+                document.getElementById('reset-settings').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                        localStorage.removeItem('signsense-settings');
+                        this.settings = this.loadSettings();
+                        this.updateUI();
+                        signSenseAR.showNotification('Settings reset to defaults', 'info');
+                    }
+                });
+            }
+
+            updateUI() {
+                // Update all controls with current settings
+                document.getElementById('hardware-acceleration').checked = this.settings.hardwareAcceleration;
+                document.getElementById('auto-tts').checked = this.settings.autoTTS;
+                document.getElementById('camera-select').value = this.settings.cameraSelect;
+                document.getElementById('camera-quality').value = this.settings.cameraQuality;
+                document.getElementById('speech-language').value = this.settings.speechLanguage;
+                document.getElementById('avatar-quality').value = this.settings.avatarQuality;
+                document.getElementById('smoothing-level').value = this.settings.smoothingLevel;
+                
+                document.getElementById('speech-speed').value = this.settings.speechSpeed;
+                document.getElementById('speech-speed-value').textContent = this.settings.speechSpeed.toFixed(1) + 'x';
+                
+                document.getElementById('detection-sensitivity').value = this.settings.detectionSensitivity;
+                document.getElementById('sensitivity-value').textContent = this.settings.detectionSensitivity.toFixed(1);
+                
+                document.getElementById('confidence-threshold').value = this.settings.confidenceThreshold;
+                document.getElementById('confidence-value').textContent = Math.round(this.settings.confidenceThreshold * 100) + '%';
+            }
+
+            async checkSystemStatus() {
+                // Check backend connection
+                try {
+                    const response = await fetch('https://signbridge-nk7n.onrender.com/api/status');
+                    if (response.ok) {
+                        this.updateBackendStatus(true);
+                    } else {
+                        this.updateBackendStatus(false);
+                    }
+                } catch (error) {
+                    this.updateBackendStatus(false);
+                }
+
+                // Check browser support
+                this.updateBrowserSupport();
+            }
+
+            updateBackendStatus(online) {
+                const statusElement = document.getElementById('backend-status');
+                if (online) {
+                    statusElement.className = 'status-indicator status-online';
+                    statusElement.innerHTML = '<span class="status-dot"></span><span>Online</span>';
+                } else {
+                    statusElement.className = 'status-indicator status-offline';
+                    statusElement.innerHTML = '<span class="status-dot"></span><span>Offline</span>';
+                }
+            }
+
+            updateBrowserSupport() {
+                const browserSupport = signSenseAR.browserSupport;
+                console.log('Browser support status:', browserSupport);
+            }
+
+            getSettings() {
+                return { ...this.settings };
+            }
+        }
+
+        // Initialize settings manager
+        const settingsManager = new SettingsManager();
+
+        // Make settings available globally
+        window.settingsManager = settingsManager;
+        // ── MENU OVERLAY
+        const menuToggle  = document.getElementById('menu-toggle');
+        const menuOverlay = document.getElementById('menu-overlay');
+        const menuClose   = document.getElementById('menu-close');
+        function openSidebar()  { menuOverlay.classList.add('open');    document.body.style.overflow='hidden'; }
+        function closeSidebar() { menuOverlay.classList.remove('open'); document.body.style.overflow=''; }
+        menuToggle.addEventListener('click', () => menuOverlay.classList.contains('open') ? closeSidebar() : openSidebar());
+        menuClose.addEventListener('click', closeSidebar);
+        document.addEventListener('keydown', (e) => { if(e.key==='Escape') closeSidebar(); });
+    </script>
+</body>
+</html>
