@@ -4,12 +4,11 @@ FROM python:3.11-slim
 # Install system dependencies required by MediaPipe and OpenCV (libGLESv2, libGL, etc.)
 RUN apt-get update && apt-get install -y \
     libgl1 \
-    libgl1-mesa-glx \
     libglib2.0-0 \
-    libgles2-mesa \
+    libgles2 \
     libsm6 \
     libxext6 \
-    libxrender-dev \
+    libxrender1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory to the root of the project
