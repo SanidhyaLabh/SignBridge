@@ -11,6 +11,9 @@ Flask + SocketIO backend with:
   * Avatar animation control
 """
 
+import eventlet
+eventlet.monkey_patch()
+
 import os
 import math
 import cv2
@@ -41,7 +44,7 @@ except ImportError:
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'signsense_ar_secret_key'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+socketio = SocketIO(app, cors_allowed_origins="*")
 CORS(app)
 
 logging.basicConfig(level=logging.INFO)
