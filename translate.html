@@ -527,7 +527,7 @@
 
         // Connect Logic
         function initSocket() {
-            socket = io('https://signbridge-nk7n.onrender.com');
+            socket = io();
             socket.on('connect', () => {
                 statusBadge.textContent = "Online";
                 statusBadge.style.color = "var(--dash-success)";

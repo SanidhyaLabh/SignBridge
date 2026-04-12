@@ -618,7 +618,7 @@
 
         function connectBackend() {
             if (!socket) {
-                socket = io('https://signbridge-nk7n.onrender.com');
+                socket = io();
                 socket.on('connect', () => console.log('Connected to backend'));
 
                 socket.on('predictions', (data) => {
@@ -720,7 +720,7 @@
         // Helper: process text for ISL via backend
         async function processForISL(text) {
             try {
-                const resp = await fetch('https://signbridge-nk7n.onrender.com/api/process_text', {
+                const resp = await fetch('/api/process_text', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text })

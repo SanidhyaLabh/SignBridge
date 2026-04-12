@@ -609,7 +609,7 @@
             async checkSystemStatus() {
                 // Check backend connection
                 try {
-                    const response = await fetch('https://signbridge-nk7n.onrender.com/api/status');
+                    const response = await fetch('/api/status');
                     if (response.ok) {
                         this.updateBackendStatus(true);
                     } else {

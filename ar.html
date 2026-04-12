@@ -593,7 +593,7 @@
         // ═══ SOCKET.IO ═══════════════════════════════════════════════
 
         function connectBackend() {
-            socket = io('https://signbridge-nk7n.onrender.com');
+            socket = io();
 
             socket.on('connect', () => {
                 setStatus('LIVE', true);
@@ -888,7 +888,7 @@
 
         async function captureIPFrame() {
             try {
-                const snapUrl = `https://signbridge-nk7n.onrender.com/api/ip_webcam_snapshot?url=${encodeURIComponent(ipBaseUrl)}`;
+                const snapUrl = `/api/ip_webcam_snapshot?url=${encodeURIComponent(ipBaseUrl)}`;
                 const resp = await fetch(snapUrl);
                 if (!resp.ok) return;
 
@@ -938,7 +938,7 @@
             connStatus.textContent = 'Testing connection...';
 
             // Test connection via backend proxy
-            fetch(`https://signbridge-nk7n.onrender.com/api/ip_webcam_snapshot?url=${encodeURIComponent(url)}`, {
+            fetch(`/api/ip_webcam_snapshot?url=${encodeURIComponent(url)}`, {
                 method: 'GET',
                 signal: AbortSignal.timeout(5000)
             })
